@@ -1,0 +1,121 @@
+// prisma/schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Student {
+  id           Int       @id @default(autoincrement())
+  fullName     String
+  regNo        String    @unique
+  phone        String
+  email        String    @unique
+  state        String
+  lga          String
+  profilePhoto String?
+  gender       Gender
+  sponsorName  String
+  sponsorPhone String
+  sessionYear  Int
+  passwordHash String
+  roomId       Int?
+  room         Room?     @relation(fields: [roomId], references: [id])
+  tickets      Ticket[]
+  hasPaid      Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  payments     Payment[]
+}
+
+model Admin {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  invitedById  Int? // foreign key
+  invitedBy    Admin?   @relation("Invites", fields: [invitedById], references: [id])
+  invitees     Admin[]  @relation("Invites")
+  createdAt    DateTime @default(now())
+}
+
+model Room {
+  id       Int       @id @default(autoincrement())
+  block    String
+  number   Int
+  price    Int
+  isFilled Boolean   @default(false)
+  gender   String    @default("unspecified")
+  students Student[]
+  payments Payment[]
+
+  @@unique([block, number], name: "block_number")
+}
+
+model Ticket {
+  id        Int           @id @default(autoincrement())
+  student   Student       @relation(fields: [studentId], references: [id])
+  studentId Int
+  subject   String
+  message   String
+  imageUrl  String?
+  status    TicketStatus  @default(OPEN)
+  replies   TicketReply[]
+  createdAt DateTime      @default(now())
+}
+
+model TicketReply {
+  id        Int      @id @default(autoincrement())
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  ticketId  Int
+  author    String
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model Payment {
+  id          Int      @id @default(autoincrement())
+  reference   String   @unique
+  amount      Int
+  status      String   @default("pending")
+  method      String?
+  student     Student  @relation(fields: [studentId], references: [id])
+  studentId   Int
+  sessionYear String
+  room        Room     @relation(fields: [roomId], references: [id])
+  roomId      Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([studentId, sessionYear], name: "payment_per_session_idx")
+}
+
+model Log {
+  id        Int      @id @default(autoincrement())
+  action    String
+  actor     String
+  meta      Json?
+  createdAt DateTime @default(now())
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum TicketStatus {
+  OPEN
+  CLOSED
+}
+
+enum PaymentMethod {
+  PAYSTACK
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+}
