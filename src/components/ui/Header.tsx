@@ -1,7 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-
 const navItems = [
   { label: 'Student Login', view: 'login' },
   { label: 'Register',      view: 'register' },
@@ -16,7 +14,7 @@ interface HeaderProps {
 }
 
 export default function Header({ current, onChange }: HeaderProps) {
-  const router = useRouter()
+
   
   return (
     <header className="relative z-10 w-full max-w-2xl mx-auto mt-8 flex justify-center space-x-8">
