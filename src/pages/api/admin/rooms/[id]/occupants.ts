@@ -1,8 +1,10 @@
 // src/pages/api/admin/rooms/[id]/occupants.ts
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { prisma } from '../../../../../../lib/prisma'
+import { prisma } from '@/lib/prisma'
+import { withLogging }                  from '@/lib/withLogging'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+
+ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const roomId = Number(req.query.id)
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET'])
@@ -25,3 +27,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ message: 'Failed to load occupants' })
   }
 }
+
+export default withLogging(handler, 'admin.rooms.occupants')

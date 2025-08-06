@@ -8,18 +8,22 @@ export default function ForgotPasswordForm() {
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    try {
-      // Replace this with your actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1500)) // fake delay for UI feedback
-      toast.success('Password reset link sent! Check your email.')
-    } catch (error) {
-      toast.error('Failed to send reset link. Please try again.')
-    } finally {
-      setLoading(false)
-    }
+  e.preventDefault()
+  setLoading(true)
+  try {
+    const res = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    if (!res.ok) throw new Error('Network error')
+    toast.success('If that email exists, a reset link has been sent.')
+  } catch (error) {
+    toast.error('Failed to send reset link. Please try again.')
+  } finally {
+    setLoading(false)
   }
+}
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

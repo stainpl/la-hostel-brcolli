@@ -53,24 +53,25 @@ export default function RoomRequestForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <label className="block font-medium">Select a Room</label>
+      <label className="block font-medium text-gray-400">Select a Room</label>
       <select
-        name="roomId"
-        value={roomId}
-        onChange={(e) => setRoomId(Number(e.target.value))}
-        className="input w-full"
-        disabled={loading}
-        required
-      >
-        <option value="" disabled>
-          -- pick one --
-        </option>
-        {options.map((r) => (
-          <option key={r.id} value={r.id}>
-            {r.label} — ₦{r.price.toLocaleString()}
-          </option>
-        ))}
-      </select>
+  name="roomId"
+  value={roomId}
+  onChange={e => setRoomId(Number(e.target.value))}
+  className="input w-full text-gray-700"
+  disabled={loading}
+  required
+>
+  <option value="" disabled className="text-gray-400">
+    -- pick one --
+  </option>
+  {options.map(r => (
+    <option key={r.id} value={r.id}>
+      {r.label} — ₦{r.price.toLocaleString()}
+    </option>
+  ))}
+</select>
+
       <button
         type="submit"
         className="btn-primary w-full flex items-center justify-center"

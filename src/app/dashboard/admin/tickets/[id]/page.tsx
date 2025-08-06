@@ -9,6 +9,8 @@ import { prisma } from '@/lib/prisma'
 import AdminReplyForm from '@/components/forms/AdminReplyForm'
 import CloseTicketButton from '@/components/ui/CloseTicketButton'
 
+
+
 type Reply = {
   id:        number
   author:    string
@@ -77,7 +79,7 @@ export default async function AdminTicketPage({
 
         {/* Ticket Header */}
         <div className="bg-white p-6 rounded-lg shadow space-y-2">
-          <h2 className="text-2xl font-semibold">{ticket.subject}</h2>
+          <h2 className="text-2xl font-semibold text-gray-800">{ticket.subject}</h2>
           <p className="text-gray-700 whitespace-pre-wrap">{ticket.message}</p>
           {ticket.imageUrl && (
             <img

@@ -3,8 +3,10 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import { prisma } from '@/lib/prisma'
+import { withLogging } from '@/lib/withLogging' 
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions)
   if (!session?.user?.role || session.user.role !== 'admin') {
     return res.status(401).json({ message: 'Unauthorized' })
@@ -44,5 +46,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ message: 'Internal server error.' })
   }
 }
+export default withLogging(handler, 'admin.tickets.reply')
 
 

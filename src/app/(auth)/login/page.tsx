@@ -24,7 +24,7 @@ export default function AdminLoginForm() {
     if (res?.error) {
       setErrorMsg('Invalid credentials')
     } else {
-      // Successful login → navigate to admin dashboard
+      
       router.push(res?.url || '/dashboard/admin')
     }
   }
@@ -52,7 +52,7 @@ export default function AdminLoginForm() {
       {errorMsg && <p className="text-sm text-red-500">{errorMsg}</p>}
 
       <button type="submit" className="btn-secondary w-full">
-        Login as Admin
+        Login
       </button>
     </form>
   )

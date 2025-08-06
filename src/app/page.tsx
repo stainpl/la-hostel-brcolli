@@ -2,13 +2,14 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import ParticleBackground from '@/components/ui/ParticleBackground'
-import NavBar from '@/components/ui/NavBar'
 import RegistrationForm from '@/components/forms/RegistrationForm'
 import LoginForm from '@/components/forms/LoginForm'
 import ForgotPasswordForm from '@/components/forms/ForgotPasswordForm'
 import AdminLoginForm from '@/components/forms/AdminLoginForm'
+
+// …
+
 
 type View = 'login' | 'register' | 'forgot' | 'admin'
 
@@ -25,63 +26,71 @@ export default function HomePage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-black text-white overflow-hidden">
+    <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black text-white overflow-hidden">
       <ParticleBackground />
+      
 
-      {/* Main flex container: text left, form right */}
-      <div className="relative z-10 flex flex-col lg:flex-row items-center justify-center min-h-screen px-4">
-
-        {/* Left: Hero Text */}
-        <div className="flex-1 text-center lg:text-left mb-8 lg:mb-0">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
-            Welcome to Your AP Hostel App
+      <main className="relative z-10 container mx-auto flex flex-col lg:flex-row items-center justify-center min-h-[calc(100vh-64px)] px-6">
+        {/* Hero Section */}
+        <section className="flex-1 mb-10 lg:mb-0 text-center lg:text-left">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold leading-snug tracking-tight">
+            AP Hostel Management
           </h1>
-          <p className="mt-4 text-lg sm:text-xl text-gray-300 max-w-md mx-auto lg:mx-0">
-            Efficiently manage bookings, payments, and communications—all in one place.
+          <p className="mt-3 text-base sm:text-lg text-gray-300 max-w-lg mx-auto lg:mx-0">
+            Streamline bookings, payments, and communication in one sleek dashboard.
           </p>
-        </div>
+        </section>
 
-        {/* Right: Form Card */}
-        <div className="flex-1 max-w-md w-full bg-white/90 text-black rounded-2xl p-6 sm:p-8 shadow-xl">
-
-          {/* Switcher Tabs */}
-          <div className="flex justify-between mb-6">
-            <button
-              className={`flex-1 py-2 text-center ${view === 'login' ? 'border-b-2 border-indigo-600 font-semibold' : 'text-gray-600'}`}
-              onClick={() => setView('login')}
-            >User Login</button>
-            <button
-              className={`flex-1 py-2 text-center ${view === 'register' ? 'border-b-2 border-indigo-600 font-semibold' : 'text-gray-600'}`}
-              onClick={() => setView('register')}
-            >Register</button>
+        {/* Form Card */}
+        <section className="flex-1 max-w-md w-full bg-white/10 backdrop-blur-lg rounded-2xl p-6 sm:p-8 shadow-2xl border border-white/20">
+          {/* Tab Switcher */}
+          <div className="flex bg-white/20 rounded-full p-1 mb-6">
+            {['login', 'register'].map(tab => (
+              <button
+                key={tab}
+                onClick={() => setView(tab as View)}
+                className={`flex-1 py-2 rounded-full text-sm font-medium transition-all duration-200
+                  ${view === tab
+                    ? 'bg-white text-gray-900 shadow-inner'
+                    : 'text-gray-200 hover:bg-white/30'
+                  }`}
+              >
+                {tab === 'login' ? 'User Login' : 'Register'}
+              </button>
+            ))}
           </div>
 
-          {/* Conditionally show “Forgot password?” link */}
+          {/* Forgot Link */}
           {view === 'login' && (
             <div className="text-right mb-4">
               <button
                 onClick={() => setView('forgot')}
-                className="text-sm text-indigo-600 hover:underline"
-              >Forgot password?</button>
+                className="text-xs text-indigo-400 hover:underline"
+              >
+                Forgot password?
+              </button>
             </div>
           )}
 
           {/* Active Form */}
-          {renderForm()}
+          <div>
+            {renderForm()}
+          </div>
 
-          {/* Admin Login Switch */}
-          <div className="mt-6 pt-4 border-t border-gray-300">
+          {/* Admin Switch */}
+          <div className="mt-6 pt-4 border-t border-white/20">
             <button
               onClick={() => setView('admin')}
-              className="w-full text-sm text-gray-700 hover:underline"
-            >Admin Login</button>
+              className="w-full text-xs text-gray-200 hover:underline"
+            >
+              Admin Login
+            </button>
           </div>
-        </div>
-      </div>
+        </section>
+      </main>
 
-      {/* Footer */}
-      <footer className="absolute bottom-4 w-full text-center text-white/70 text-xs sm:text-sm">
-        © {new Date().getFullYear()} Your Hostel Management. All rights reserved.
+      <footer className="absolute bottom-4 w-full text-center text-gray-400 text-xs">
+        © {new Date().getFullYear()} by Silas. T
       </footer>
     </div>
   )

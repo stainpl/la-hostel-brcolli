@@ -122,7 +122,7 @@ export default function EditStudentForm({ initialData }: Props) {
           {previewUrl ? (
             <img src={previewUrl} alt="Preview" className="w-full h-full object-cover rounded-full" />
           ) : (
-            <div className="w-full h-full bg-gray-200 rounded-full flex items-center justify-center">
+            <div className="w-full h-full bg-gray-500 rounded-full flex items-center justify-center">
               No Photo
             </div>
           )}
@@ -136,127 +136,137 @@ export default function EditStudentForm({ initialData }: Props) {
         <div className="grid grid-cols-2 gap-4 flex-1">
 
           <div>
-            <label className="block font-semibold">Full Name</label>
+            <label className="block font-semibold text-gray-950">Full Name</label>
             <input
               name="fullName"
               value={form.fullName}
               onChange={handleChange}
-              className="input w-full"
+              placeholder="Full name"
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm 
+             placeholder:text-gray-600 text-black"
             />
           </div>
           <div>
-            <label className="block font-semibold">Registration No.</label>
+            <label className="block font-semibold text-gray-900">Registration No.</label>
             <input
               name="regNo"
               value={form.regNo}
               onChange={handleChange}
-              className="input w-full"
+              placeholder="Reg No"
+             className="w-full px-3 py-2 border border-gray-300 rounded text-sm 
+             placeholder:text-gray-600 text-black"
             />
           </div>
           <div>
-            <label className="block font-semibold">Phone</label>
+            <label className="block font-semibold text-gray-950">Phone</label>
             <input
               name="phone"
               value={form.phone}
               onChange={handleChange}
-              className="input w-full"
               type="tel"
+              placeholder="Phone No.."
+             className="w-full px-3 py-2 border border-gray-300 rounded text-sm 
+             placeholder:text-gray-600 text-black"
             />
           </div>
           <div>
-            <label className="block font-semibold">Email</label>
-            <input
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              className="input w-full"
-              type="email"
+            <label className="block font-bold text-gray-950">Email</label>
+         <input
+         name="email"
+          value={form.email}
+          onChange={handleChange}
+          type="email"
+          placeholder="Email@ domain.com"
+             className="w-full px-3 py-2 border border-gray-300 rounded text-sm 
+             placeholder:text-gray-600 text-black"
             />
           </div>
           <div>
-            <label className="block font-semibold">State</label>
+            <label className="block font-semibold text-gray-900">State</label>
             <input
               name="state"
               value={form.state}
               onChange={handleChange}
-              className="input w-full"
+              placeholder="State"
+             className="w-full px-3 py-2 border border-gray-300 rounded text-sm 
+             placeholder:text-gray-600 text-black"
             />
           </div>
           <div>
-            <label className="block font-semibold">LGA</label>
+            <label className="block font-semibold text-gray-950">LGA</label>
             <input
               name="lga"
               value={form.lga}
               onChange={handleChange}
-              className="input w-full"
+              placeholder="LGA"
+             className="w-full px-3 py-2 border border-gray-300 rounded text-sm 
+             placeholder:text-gray-600 text-black"
             />
           </div>
           <div>
-            <label className="block font-semibold">Sponsor Name</label>
+            <label className="block font-semibold text-gray-950">Sponsor Name</label>
             <input
               name="sponsorName"
               value={form.sponsorName}
               onChange={handleChange}
-              className="input w-full"
+              placeholder="Reg No"
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm 
+             placeholder:text-gray-600 text-black"
             />
           </div>
           <div>
-            <label className="block font-semibold">Sponsor Phone</label>
+            <label className="block font-semibold text-gray-950">Sponsor Phone</label>
             <input
               name="sponsorPhone"
               value={form.sponsorPhone}
               onChange={handleChange}
-              className="input w-full"
+              placeholder="Phone No"
+             className="w-full px-3 py-2 border border-gray-300 rounded text-sm 
+             placeholder:text-gray-600 text-black"
               type="tel"
             />
           </div>
           
           <div>
-            <label className="block font-semibold">Gender</label>
+            <label className="block font-semibold text-gray-950">Gender</label>
             <select
-              name="gender"
-              value={form.gender}
-              onChange={handleChange}
-              className="input w-full"
-              required
-            >
+  name="gender"
+  value={form.gender}
+  onChange={handleChange}
+  className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-400 bg-white placeholder:text-gray-600 focus:outline-none focus:ring 
+             dark:bg-gray-800 dark:text-white dark:border-gray-600"
+  required
+>
               <option value="MALE">Male</option>
               <option value="FEMALE">Female</option>
             </select>
           </div>
           <div>
-            <label className="block font-semibold">Session Year</label>
+            <label className="block font-semibold text-gray-950">Session Year</label>
             <input
               name="sessionYear"
               type="number"
               value={form.sessionYear}
               onChange={handleChange}
-              className="input w-full"
+              placeholder="Year"
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm 
+             placeholder:text-gray-600 text-black"
               required
             />
           </div>
           <div>
-            <label className="block font-semibold">Room ID</label>
+            <label className="block font-semibold text-gray-950">Room ID</label>
             <input
               name="roomId"
               type="number"
               value={form.roomId}
               onChange={handleChange}
-              className="input w-full"
-              placeholder="leave blank if none"
+              placeholder="Room ID"
+             className="w-full px-3 py-2 border border-gray-300 rounded text-sm 
+             placeholder:text-gray-600 text-black"
             />
           </div>
-          <div className="flex items-center space-x-2">
-            <input
-              id="hasPaid"
-              name="hasPaid"
-              type="checkbox"
-              checked={form.hasPaid}
-              onChange={handleChange}
-              className="checkbox"
-            />
-            <label htmlFor="hasPaid" className="font-semibold">Payment Confirmed</label>
-          </div>
+          
         </div>
       </div>
 

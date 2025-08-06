@@ -1,47 +1,50 @@
 // src/pages/api/admin/rooms/index.ts
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { prisma } from '@/lib/prisma'
+import { getServerSession }             from 'next-auth/next'
+import { authOptions }                  from '@/pages/api/auth/[...nextauth]'
+import { prisma }                       from '@/lib/prisma'
+import { withLogging }                  from '@/lib/withLogging'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    if (req.method === 'GET') {
-      const rooms = await prisma.room.findMany({
-        orderBy: [{ block: 'asc' }, { number: 'asc' }],
-      })
-      return res.status(200).json(rooms)
-    }
-
-    if (req.method === 'POST') {
-      const { block, number, price, gender } = req.body as {
-        block:  string
-        number: number
-        price:  number
-        gender: string
-      }
-
-      console.log('Creating room with', { block, number, price, gender })
-
-      // Duplicate check
-      const exists = await prisma.room.findFirst({
-        where: { block, number },
-      })
-      if (exists) {
-        return res
-          .status(409)
-          .json({ message: `Room ${block}${number} already exists` })
-      }
-
-      // Create with gender
-      const newRoom = await prisma.room.create({
-        data: { block, number, price, gender, isFilled: false },
-      })
-      return res.status(201).json(newRoom)
-    }
-
-    res.setHeader('Allow', ['GET', 'POST'])
-    return res.status(405).end(`Method ${req.method} Not Allowed`)
-  } catch (err) {
-    console.error('[/api/admin/rooms] error:', err)
-    return res.status(500).json({ message: 'Server error' })
+// Core handler logic
+async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const session = await getServerSession(req, res, authOptions)
+  if (!session?.user?.role || session.user.role !== 'admin') {
+    return res.status(401).json({ message: 'Unauthorized' })
   }
+
+  if (req.method === 'GET') {
+    const rooms = await prisma.room.findMany()
+    return res.status(200).json(rooms)
+  }
+
+  if (req.method === 'POST') {
+    const { block, number, price, gender } = req.body
+    if (!block || !number || !price || !gender) {
+      return res.status(400).json({ message: 'All fields required' })
+    }
+    try {
+      const room = await prisma.room.create({
+        data: {
+          block:  block.toUpperCase(),
+          number: Number(number),
+          price:  Number(price),
+          gender,
+        },
+      })
+      return res.status(201).json(room)
+    } catch (e: any) {
+      if (e.code === 'P2002') {
+        const msg = `Room ${block.toUpperCase()}-${number} for ${gender.toLowerCase()} already exists.`
+        return res.status(409).json({ message: msg })
+      }
+      console.error(e)
+      return res.status(500).json({ message: 'Internal server error' })
+    }
+  }
+
+  res.setHeader('Allow', ['GET','POST'])
+  return res.status(405).end(`Method ${req.method} Not Allowed`)
 }
+
+// Export wrapped with logging
+export default withLogging(handler, 'admin.room:list')

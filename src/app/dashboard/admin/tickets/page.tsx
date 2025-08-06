@@ -6,6 +6,7 @@ import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import TicketsAdminClient from './TicketsAdminClient'
+import type { Prisma } from '@prisma/client'
 
 interface SearchParams {
   openPage?:  string
@@ -29,7 +30,7 @@ export default async function AdminTicketsPage({ searchParams }: { searchParams:
   const skipClosed = (closedPage- 1) * take
 
   // 3) Build gender filter if any
-  const genderClause = 
+  const genderClause: Prisma.TicketWhereInput =
     gender === 'MALE'   ? { student: { gender: 'MALE' } } :
     gender === 'FEMALE' ? { student: { gender: 'FEMALE' } } :
                           {}
@@ -72,7 +73,7 @@ export default async function AdminTicketsPage({ searchParams }: { searchParams:
     <div className="min-h-screen bg-gray-100">
       <main className="max-w-6xl mx-auto p-6 space-y-6">
         <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Manage Support Tickets</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Manage Support Tickets</h1>
           <Link
             href="/dashboard/admin"
             className="text-indigo-600 hover:underline text-sm"

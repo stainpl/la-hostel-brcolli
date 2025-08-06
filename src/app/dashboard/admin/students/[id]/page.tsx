@@ -56,7 +56,8 @@ export default async function EditStudentPage({ params }: Props) {
         </header>
 
         {/* Pass the student as initial values */}
-        <EditStudentForm initialData={student} />
+        <EditStudentForm initialData={{ ...student, sessionYear: Number(student.sessionYear) }} />
+
       </main>
     </div>
   )

@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import axios from 'axios'
 import { useRouter } from 'next/navigation'
+import  Textarea  from '@/components/ui/Textarea'
 
 interface Props { ticketId: number }
 
@@ -34,12 +35,15 @@ export default function TicketReplyForm({ ticketId }: Props) {
   return (
     <form onSubmit={handleSubmit} className="mt-6 space-y-3">
       {error && <p className="text-sm text-red-500">{error}</p>}
-      <textarea
-        value={message}
-        onChange={e => setMessage(e.target.value)}
-        className="input w-full h-24"
-        placeholder="Type your reply..."
-      />
+      <Textarea
+    value={message}
+    onChange={e => {
+      setMessage(e.target.value)
+    }}
+    placeholder="Type your reply…"
+    placeholderClassName="placeholder:font-bold placeholder-gray-600 placeholder-opacity-100"
+    className="w-full h-24 resize-y text-gray-800"
+  />
       <button
         type="submit"
         disabled={loading}

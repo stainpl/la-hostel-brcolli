@@ -7,7 +7,7 @@
       "dom.iterable",
       "esnext"
     ],
-    "types": ["next", "node"], 
+    "types": ["next",  "node", "jquery"], 
     "allowJs": true,
     "skipLibCheck": true,
     "outDir": "dist",
@@ -23,6 +23,7 @@
     "incremental": true,
     "plugins": [{ "name": "next" }],
     "paths": {
+      "@/lib/*": ["./src/lib/*"],
       "@/*": ["./src/*"]
     }
   },

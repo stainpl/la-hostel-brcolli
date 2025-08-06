@@ -24,19 +24,12 @@ export default async function PaymentsPage() {
 
   // 2) Fetch only SUCCESSFUL payments
   const payments: Payment[] = await prisma.payment.findMany({
-    where: {
-      studentId,
-      status: 'success',
-    },
-    orderBy: { createdAt: 'desc' },
-    select: {
-      id:        true,
-      reference: true,
-      amount:    true,
-      status:    true,
-      createdAt: true,
-    },
-  })
+  where: { studentId, status: { in: ['success', 'confirmed'] } },
+  orderBy: { createdAt: 'desc' },
+  select: { id: true, reference: true, amount: true, status: true, createdAt: true },
+})
+
+
 
   return (
     <div className="min-h-screen bg-gray-700">
@@ -82,7 +75,8 @@ export default async function PaymentsPage() {
                       {p.reference}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                      {p.amount.toLocaleString()}
+                       ₦{(p.amount / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2,
+  })}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(p.createdAt).toLocaleString()}

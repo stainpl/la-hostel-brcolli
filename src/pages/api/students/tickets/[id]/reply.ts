@@ -3,8 +3,9 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import { prisma } from '@/lib/prisma'
+import { withLogging } from '@/lib/withLogging'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions)
   if (!session?.user?.role || session.user.role !== 'student') {
     return res.status(401).end()
@@ -45,3 +46,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader('Allow', ['POST'])
   res.status(405).end(`Method ${req.method} Not Allowed`)
 }
+export default withLogging(handler, 'students.ticket.reply')

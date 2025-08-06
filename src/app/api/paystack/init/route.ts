@@ -1,80 +1,87 @@
+// src/app/api/paystack/init/route.ts
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions }      from '@/pages/api/auth/[...nextauth]'
+import { prisma }           from '@/lib/prisma'
 
+const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY!
+const CALLBACK_URL    = `${process.env.NEXT_PUBLIC_BASE_URL}/api/paystack/verify`
 
 export async function POST(req: Request) {
   try {
-    const { roomId: rawRoomId, studentId: rawStudentId } = await req.json()
-    const roomId    = Number(rawRoomId)
-    const studentId = Number(rawStudentId)
-    if (!roomId || !studentId) {
-      return NextResponse.json(
-        { message: 'Missing or invalid roomId or studentId' },
-        { status: 400 }
-      )
+    // 1) Ensure student is logged in
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id || session.user.role !== 'student') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const studentId = Number(session.user.id)
+
+    // 2) Parse & validate body
+    const { roomId } = await req.json() as { roomId?: number }
+    if (!roomId || isNaN(roomId)) {
+      return NextResponse.json({ error: 'Invalid roomId' }, { status: 400 })
     }
 
-    // Load room & student (including sessionYear)
+    // 3) Lookup room and student
     const room = await prisma.room.findUnique({ where: { id: roomId } })
+    if (!room) {
+      return NextResponse.json({ error: 'Room not found' }, { status: 404 })
+    }
     const student = await prisma.student.findUnique({
       where: { id: studentId },
       select: { email: true, sessionYear: true },
     })
-    if (!room) {
-      return NextResponse.json({ message: 'Room not found' }, { status: 404 })
+    if (!student) {
+      return NextResponse.json({ error: 'Student not found' }, { status: 404 })
     }
-    if (!student?.email) {
-      return NextResponse.json({ message: 'Student not found or missing email' }, { status: 404 })
-    }
+    const nairaPrice = room!.price
+    const koboAmount = nairaPrice * 100
 
+    // 4) Create pending Payment record
     const reference = `hstl_${Date.now()}`
-
-    // Create pending payment, now including sessionYear
+    const amountKobo = room.price * 100
     await prisma.payment.create({
       data: {
         reference,
-        amount:      room.price * 100,     // in kobo
+        amount:      koboAmount,
+        method:      'init',
+        status:      'pending',
         studentId,
         roomId,
-        status:      'pending',
-        method:      'init',
-        sessionYear: student.sessionYear,   // ← include this
+        sessionYear: String(student.sessionYear),
       },
     })
 
-    // Initialize Paystack transaction
-    const initRes = await fetch('https://api.paystack.co/transaction/initialize', {
+    // 5) Initialize Paystack transaction
+    const response = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        Authorization: `Bearer ${PAYSTACK_SECRET}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         email:        student.email,
-        amount:       room.price * 100,
+        amount:       amountKobo,
         reference,
-        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/paystack/callback`,
+        callback_url: CALLBACK_URL,
       }),
     })
-    const initData = await initRes.json()
-    if (!initRes.ok || initData.status !== true) {
-      console.error('Paystack init failed:', initData)
-      return NextResponse.json(
-        { message: initData.message || 'Paystack initialization failed' },
-        { status: initRes.status || 500 }
-      )
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => null)
+      console.error('[Paystack Init Error]', err)
+      return NextResponse.json({ error: 'Failed to initialize payment' }, { status: 502 })
     }
 
+    const payload = await response.json()
+    // 6) Return the Paystack authorization URL
     return NextResponse.json({
-      authorization_url: initData.data.authorization_url,
-      reference,
-      email:             student.email,
+      authorization_url: payload.data.authorization_url,
+      access_code:       payload.data.access_code,
+      reference:         payload.data.reference,
     })
-  } catch (err: any) {
-    console.error('[/api/paystack/init] unexpected error:', err)
-    return NextResponse.json(
-      { message: 'Failed to initialize payment' },
-      { status: 500 }
-    )
+  } catch (e: any) {
+    console.error('[api/paystack/init] error:', e)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

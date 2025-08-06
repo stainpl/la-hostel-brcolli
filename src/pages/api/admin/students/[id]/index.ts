@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { IncomingForm } from 'formidable'
 import fs from 'fs'
 import path from 'path'
+import { withLogging } from '@/lib/withLogging'
 
 // 1) Disable built‑in body parsing so formidable can handle it
 export const config = {
@@ -30,7 +31,7 @@ function parseForm(req: NextApiRequest): Promise<{ fields: any; files: any }> {
   })
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Only PATCH
   if (req.method !== 'PATCH') {
     res.setHeader('Allow', ['PATCH'])
@@ -64,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const gender       = String(fields.gender) as 'MALE' | 'FEMALE'
     const sponsorName  = String(fields.sponsorName)
     const sponsorPhone = String(fields.sponsorPhone)
-    const sessionYear  = Number(fields.sessionYear)
+    const sessionYear  = String(fields.sessionYear)
     const roomId       = fields.roomId ? Number(fields.roomId) : null
     const hasPaid = rawHasPaid === 'true' || rawHasPaid === 'on'
 
@@ -105,3 +106,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ message: err.message || 'Internal Server Error' })
   }
 }
+
+export default withLogging(handler, 'admin.students.list')

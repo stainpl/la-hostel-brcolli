@@ -48,32 +48,46 @@ export default function TicketForm({ studentId }: Props) {
       {error && <p className="text-sm text-red-500">{error}</p>}
 
       <div>
-        <label htmlFor="subject" className="block font-medium">Subject</label>
-        <input
-          id="subject"
-          name="subject"
-          type="text"
-          value={subject}
-          onChange={e => setSubject(e.target.value)}
-          className="input w-full"
-          required
-        />
-      </div>
+  <label htmlFor="subject" className="block font-medium text-green-700">
+    Subject
+  </label>
+  <input
+    id="subject"
+    name="subject"
+    type="text"
+    value={subject}
+    onChange={e => setSubject(e.target.value)}
+    required
+    className="
+      input w-full
+      placeholder-gray-600       
+      placeholder-opacity-100  
+      text-gray-900         
+    "
+  />
+</div>
+
+<div>
+  <label htmlFor="message" className="block font-medium text-gray-800">
+    Message
+  </label>
+  <textarea
+    id="message"
+    name="message"
+    value={message}
+    onChange={e => setMessage(e.target.value)}
+    required
+    className="
+      input w-full h-32
+      placeholder-gray-600
+      placeholder-opacity-100
+      text-gray-900
+    "
+  />
+</div>
 
       <div>
-        <label htmlFor="message" className="block font-medium">Message</label>
-        <textarea
-          id="message"
-          name="message"
-          value={message}
-          onChange={e => setMessage(e.target.value)}
-          className="input w-full h-32"
-          required
-        />
-      </div>
-
-      <div>
-        <label htmlFor="image" className="block font-medium">Image (optional)</label>
+        <label htmlFor="image" className="block font-medium text-gray-950">Image (optional)</label>
         <input
           id="image"
           name="image"

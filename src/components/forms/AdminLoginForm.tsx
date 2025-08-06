@@ -17,11 +17,10 @@ export default function AdminLoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    // Call the "credentials" provider and pass role="admin"
     const res = await signIn('credentials', {
       email: form.email,
       password: form.password,
-      role: 'admin',               // ← tell NextAuth this is an admin login
+      role: 'admin',               
       callbackUrl: '/dashboard/admin',
       redirect: false,
     })
@@ -33,7 +32,7 @@ export default function AdminLoginForm() {
       toast.success('Login successful!')
       router.push(res?.url || '/dashboard/admin')
     }
-    // otherwise, NextAuth will navigate to callbackUrl
+   
   }
 
   return (
@@ -59,7 +58,7 @@ export default function AdminLoginForm() {
         disabled={loading}
       />
       <button type="submit" className="btn-secondary w-full flex items-center justify-center" disabled={loading}>
-        {loading ? <Spinner size={20} colorClass="text-white" /> : 'Admin Login'}
+        {loading ? <Spinner size={20} colorClass="text-white" /> : 'Login'}
       </button>
     </form>
   )

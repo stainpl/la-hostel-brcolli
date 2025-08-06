@@ -52,7 +52,7 @@ export default async function RoomRequestPage() {
   return (
     <div className="max-w-lg mx-auto p-6 space-y-6">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Request a Room</h1>
+        <h1 className="text-2xl font-bold text-gray-400">Request a Room</h1>
         <Link
           href="/dashboard/student"
           className="text-sm text-indigo-600 hover:underline"

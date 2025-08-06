@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt'
 import formidable, { File } from 'formidable'
 import { promises as fs } from 'fs'
 import path from 'path'
+import { withLogging } from '@/lib/withLogging'
 
 // Disable Next.js’s default JSON body parser
 export const config = {
@@ -29,7 +30,7 @@ function parseForm(req: NextApiRequest): Promise<{
   })
 }
 
-export default async function handler(
+ async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
@@ -143,7 +144,7 @@ export default async function handler(
         gender: gender as any,
         sponsorName,
         sponsorPhone,
-        sessionYear: Number(sessionYear),
+        sessionYear,
         passwordHash,
         profilePhoto: photoUrl,
       },
@@ -164,3 +165,4 @@ export default async function handler(
     return res.status(500).json({ message: 'Server error' })
   }
 }
+export default withLogging(handler, 'students.register')

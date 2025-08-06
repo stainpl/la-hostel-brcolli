@@ -20,7 +20,7 @@ model Student {
   gender       Gender
   sponsorName  String
   sponsorPhone String
-  sessionYear  Int
+  sessionYear  String
   passwordHash String
   roomId       Int?
   room         Room?     @relation(fields: [roomId], references: [id])
@@ -29,16 +29,49 @@ model Student {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   payments     Payment[]
+
+  resets    StudentReset[]  @relation("StudentToResets")
 }
 
 model Admin {
   id           Int      @id @default(autoincrement())
   email        String   @unique
+  nickname     String?
   passwordHash String
-  invitedById  Int? // foreign key
+  invitedById  Int?
   invitedBy    Admin?   @relation("Invites", fields: [invitedById], references: [id])
   invitees     Admin[]  @relation("Invites")
   createdAt    DateTime @default(now())
+
+  passwordResets PasswordReset[]
+  payments       Payment[]
+}
+
+model PasswordReset {
+  id        Int      @id @default(autoincrement())
+  admin     Admin    @relation(fields: [adminId], references: [id])
+  adminId   Int
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model StudentReset {
+  id Int      @id @default(autoincrement())
+  student    Student  @relation("StudentToResets", fields: [studentId], references: [id])
+  studentId Int
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model AdminInvite {
+  id        Int      @id @default(autoincrement())
+  email     String
+  nickname  String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 model Room {
@@ -51,7 +84,7 @@ model Room {
   students Student[]
   payments Payment[]
 
-  @@unique([block, number], name: "block_number")
+  @@unique([block, number, gender], name: "Room_block_number_gender_key")
 }
 
 model Ticket {
@@ -81,6 +114,8 @@ model Payment {
   amount      Int
   status      String   @default("pending")
   method      String?
+  admin       Admin?   @relation(fields: [adminId], references: [id])
+  adminId     Int?
   student     Student  @relation(fields: [studentId], references: [id])
   studentId   Int
   sessionYear String
@@ -94,10 +129,22 @@ model Payment {
 
 model Log {
   id        Int      @id @default(autoincrement())
-  action    String
-  actor     String
-  meta      Json?
-  createdAt DateTime @default(now())
+  timestamp DateTime @default(now())
+  level     LogLevel
+  message   String
+  context   String?
+}
+
+model Config{
+  key    String @id
+  value   String
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
 }
 
 enum Gender {

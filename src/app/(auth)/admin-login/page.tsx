@@ -1,7 +1,7 @@
 // src/app/(auth)/admin-login/page.tsx
 'use client'
 
-import AdminLoginForm from '@/components/AdminLoginForm'
+import AdminLoginForm from '@/components/forms/AdminLoginForm'
 
 export default function AdminLoginPage() {
   return (

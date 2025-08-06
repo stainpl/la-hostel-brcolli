@@ -52,7 +52,8 @@ export default async function StudentPage() {
         <main className="max-w-4xl mx-auto p-6 space-y-8">
           {/* Welcome Header */}
           <header className="text-white">
-            <h1 className="text-2xl font-bold">Welcome, {firstName}!</h1>          </header>
+            <h1 className="text-2xl font-bold">Welcome, {firstName}!</h1>          
+          </header>
 
           {/* Collapsible Profile Card */}
           <details className="bg-gray-500 rounded-2xl shadow p-4" open={false}>
@@ -123,7 +124,7 @@ export default async function StudentPage() {
             <Link href="/dashboard/student/payments" className="block">
               <div className="bg-blue-500 rounded-2xl shadow hover:shadow-lg transition p-6 text-center">
                 <h3 className="text-lg font-semibold mb-2">Payments</h3>
-                <p className="text-sm text-gray-200">Make or view payments</p>
+                <p className="text-sm text-gray-200">View payments</p>
               </div>
             </Link>
           </section>

@@ -4,6 +4,7 @@ import { IncomingForm } from 'formidable'
 import fs from 'fs'
 import { authOptions } from '../../auth/[...nextauth]'
 import { prisma } from '@/lib/prisma'
+import { withLogging } from '@/lib/withLogging'
 
 export const config = { api: { bodyParser: false } }
 
@@ -22,7 +23,7 @@ function parseForm(req: NextApiRequest): Promise<{ fields: any; files: any }> {
   })
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST'])
     return res.status(405).end(`Method ${req.method} Not Allowed`)
@@ -87,3 +88,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ message: 'Error opening ticket.' })
   }
 }
+export default withLogging(handler, 'students.ticket.create')

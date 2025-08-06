@@ -22,7 +22,8 @@ export default async function EditStudentPage(props: any) {
   return (
     <div>
       {/* … your header … */}
-      <EditStudentForm initialData={student} />
+      <EditStudentForm initialData={{ ...student, sessionYear: Number(student.sessionYear) }} />
+
     </div>
   )
 }

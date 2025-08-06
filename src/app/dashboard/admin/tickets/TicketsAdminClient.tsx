@@ -65,7 +65,7 @@ export default function TicketsAdminClient({
     <div className="space-y-6">
       {/* Filter */}
       <div className="flex items-center space-x-4">
-        <label className="font-medium">Gender Filter:</label>
+        <label className="font-medium text-gray-900">Gender Filter:</label>
         <select
           value={genderFilter}
           onChange={e => setGenderFilter(e.target.value as any)}
@@ -84,7 +84,7 @@ export default function TicketsAdminClient({
       <div className="grid grid-cols-2 gap-6">
         {/* OPEN */}
         <div>
-          <h2 className="font-semibold mb-2">Open Tickets</h2>
+          <h2 className="font-semibold mb-2 text-gray-800">Open Tickets</h2>
           <div className="overflow-x-auto bg-white rounded shadow mb-2">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -98,9 +98,9 @@ export default function TicketsAdminClient({
               <tbody className="bg-white divide-y divide-gray-200">
                 {openTickets.map(t => (
                   <tr key={t.id}>
-                    <td className="px-4 py-2 text-sm">{t.student}</td>
-                    <td className="px-4 py-2 text-sm">{t.subject}</td>
-                    <td className="px-4 py-2 text-sm">{new Date(t.createdAt).toLocaleString()}</td>
+                    <td className="px-4 py-2 text-sm text-green-600">{t.student}</td>
+                    <td className="px-4 py-2 text-sm text-gray-950">{t.subject}</td>
+                    <td className="px-4 py-2 text-sm text-gray-700">{new Date(t.createdAt).toLocaleString()}</td>
                     <td className="px-4 py-2 text-right">
                       <Link
                         href={`/dashboard/admin/tickets/${t.id}`}
@@ -136,7 +136,7 @@ export default function TicketsAdminClient({
 
         {/* CLOSED */}
         <div>
-          <h2 className="font-semibold mb-2">Closed Tickets</h2>
+          <h2 className="font-semibold mb-2 text-amber-950">Closed Tickets</h2>
           <div className="overflow-x-auto bg-white rounded shadow mb-2">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -150,9 +150,9 @@ export default function TicketsAdminClient({
               <tbody className="bg-white divide-y divide-gray-200">
                 {closedTickets.map(t => (
                   <tr key={t.id}>
-                    <td className="px-4 py-2 text-sm">{t.student}</td>
-                    <td className="px-4 py-2 text-sm">{t.subject}</td>
-                    <td className="px-4 py-2 text-sm">{new Date(t.createdAt).toLocaleString()}</td>
+                    <td className="px-4 py-2 text-sm text-green-600">{t.student}</td>
+                    <td className="px-4 py-2 text-sm text-pink-700">{t.subject}</td>
+                    <td className="px-4 py-2 text-sm text-gray-700">{new Date(t.createdAt).toLocaleString()}</td>
                     <td className="px-4 py-2 text-right">
                       <Link
                         href={`/dashboard/admin/tickets/${t.id}`}

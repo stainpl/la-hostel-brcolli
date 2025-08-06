@@ -3,8 +3,9 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { getServerSession }            from 'next-auth/next'
 import { authOptions }                 from '@/pages/api/auth/[...nextauth]'
 import { prisma }                      from '@/lib/prisma'
+import { withLogging }                 from '@/lib/withLogging'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'PATCH') {
     res.setHeader('Allow', ['PATCH'])
     return res.status(405).end(`Method ${req.method} Not Allowed`)
@@ -26,3 +27,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ message: 'Failed to delete student' })
   }
 }
+
+export default withLogging(handler, 'admin.students.delete')

@@ -13,14 +13,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
-        {/* Paystack inline JS must load beforeInteractive */}
+
         <Script
           src="https://js.paystack.co/v2/inline.js"
           strategy="beforeInteractive"
         />
       </head>
       <body>
-        {/* Everything under Providers can use hooks & context */}
+
         <Providers>{children}</Providers>
       </body>
     </html>

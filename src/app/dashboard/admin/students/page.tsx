@@ -1,3 +1,4 @@
+// app/dashboard/admin/students/page.tsx
 import React from 'react'
 import Link from 'next/link'
 import { getServerSession } from 'next-auth'
@@ -6,23 +7,33 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import StudentsAdminClient from './StudentAdminClient'
 
-// Define the type for a student row as returned from Prisma
-type StudentRow = {
+// 1) “raw” type matching exactly what Prisma returns
+type RawStudent = {
   id: number
   fullName: string
   email: string
-  room: { block: string; number: string } | null
+  room: { block: string; number: number } | null
   gender: 'MALE' | 'FEMALE'
-  sessionYear: number
+  sessionYear: string
+}
+
+// 2) The exact shape StudentsAdminClient expects
+export type StudentAdmin = {
+  id: number
+  fullName: string
+  email: string
+  room: string               // e.g. "A-101" or "—"
+  gender: 'MALE' | 'FEMALE'
+  sessionYear: number        // parsed from string
 }
 
 export default async function AdminStudentsPage({
   searchParams,
 }: {
-  searchParams: Record<string, string | undefined> // explicitly type searchParams
+  searchParams: Record<string, string | undefined>
 }) {
-  // Await searchParams per Next.js requirement
-  const params = await searchParams as Record<string, string | undefined>
+  // Next.js requires you to await searchParams if you use them
+  const params = (await searchParams) as Record<string, string | undefined>
 
   // 1) Auth guard
   const session = await getServerSession(authOptions)
@@ -31,20 +42,24 @@ export default async function AdminStudentsPage({
   }
 
   // 2) Read filters & pagination
-  const pageParam  = params.page  || '1'
-  const gender     = params.gender ? params.gender.toUpperCase() : undefined
-  const yearParam  = params.year   || ''
-  const page       = parseInt(pageParam, 10) || 1
-  const take       = 10
-  const skip       = (page - 1) * take
+  const pageParam = params.page || '1'
+  const gender    = params.gender?.toUpperCase()
+  const yearParam = params.year || ''
+  const page      = parseInt(pageParam, 10) || 1
+  const take      = 10
+  const skip      = (page - 1) * take
 
-  // 3) Build where clause
+  // 3) Build Prisma where clause
   const where: Record<string, any> = {}
-  if (gender === 'MALE' || gender === 'FEMALE') where.gender = gender
-  if (yearParam.match(/^\d{4}$/)) where.sessionYear = Number(yearParam)
+  if (gender === 'MALE' || gender === 'FEMALE') {
+    where.gender = gender
+  }
+  if (/^\d{4}$/.test(yearParam)) {
+    where.sessionYear = yearParam  // Prisma will compare string
+  }
 
-  // 4) Fetch data + count
-  const [students, total]: [StudentRow[], number] = await prisma.$transaction([
+  // 4) Fetch raw rows + count
+  const [rawRows, total]: [RawStudent[], number] = await prisma.$transaction([
     prisma.student.findMany({
       where,
       orderBy: { updatedAt: 'desc' },
@@ -64,28 +79,31 @@ export default async function AdminStudentsPage({
 
   const totalPages = Math.ceil(total / take)
 
-  // 5) Map for client
-  const data = students.map((s: StudentRow) => ({
+  // 5) Map into the shape your client component expects
+  const students: StudentAdmin[] = rawRows.map((s) => ({
     id: s.id,
     fullName: s.fullName,
     email: s.email,
     room: s.room ? `${s.room.block}-${s.room.number}` : '—',
     gender: s.gender,
-    sessionYear: s.sessionYear,
+    sessionYear: parseInt(s.sessionYear, 10),
   }))
 
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-6xl mx-auto p-6 space-y-6">
         <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Student Records</h1>
-          <Link href="/dashboard/admin" className="text-indigo-600 hover:underline text-sm">
+          <h1 className="text-2xl font-bold text-gray-950">Student Records</h1>
+          <Link
+            href="/dashboard/admin"
+            className="text-indigo-600 hover:underline text-sm"
+          >
             ← Back to Dashboard
           </Link>
         </header>
 
         <StudentsAdminClient
-          students={data}
+          students={students}
           page={page}
           totalPages={totalPages}
           currentGender={(gender as 'MALE' | 'FEMALE') || 'ALL'}

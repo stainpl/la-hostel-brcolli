@@ -23,7 +23,7 @@ export default function TicketList({ tickets }: { tickets: TicketSummary[] }) {
           className="bg-white p-4 rounded-lg shadow flex justify-between items-center"
         >
           <div>
-            <h4 className="font-semibold">{t.subject}</h4>
+            <h4 className="font-semibold text-gray-500">{t.subject}</h4>
             <p className="text-sm text-gray-500">
               {new Date(t.createdAt).toLocaleString()}
             </p>

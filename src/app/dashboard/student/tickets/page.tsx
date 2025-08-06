@@ -35,7 +35,7 @@ export default async function TicketsPage() {
     <div className="min-h-screen bg-gray-100">
       <main className="max-w-3xl mx-auto p-6 space-y-6">
         <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Support Tickets</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Support Tickets</h1>
           <a
             href="/dashboard/student"
             className="text-indigo-600 hover:underline text-sm"

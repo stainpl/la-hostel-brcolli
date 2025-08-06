@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -19,7 +21,7 @@ body {
 }
 
 .input {
-  @apply w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400;
+  @apply w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 placeholder:text-gray-600;
 }
 
 .btn-primary {
@@ -37,3 +39,4 @@ body {
 .tab-active {
   @apply bg-indigo-600 text-white dark:bg-indigo-500;
 }
+

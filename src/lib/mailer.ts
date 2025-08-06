@@ -14,8 +14,30 @@ const transporter = nodemailer.createTransport({
   },
 })
 
+/**
+ * Generic email sender
+ */
+export async function sendEmail(opts: {
+  to: string
+  subject: string
+  html: string
+  text?: string
+}) {
+  const { to, subject, html, text } = opts
+  await transporter.sendMail({
+    from: `"${process.env.SCHOOL_NAME}" <${process.env.SMTP_USER}>`,
+    to,
+    subject,
+    text,
+    html,
+  })
+}
+
+/**
+ * Send a PDF payment receipt
+ */
 export async function sendPaymentReceipt(opts: {
-  toEmail: string
+  to: string
   studentName: string
   roomBlock: string
   roomNumber: number
@@ -23,48 +45,43 @@ export async function sendPaymentReceipt(opts: {
   reference: string
   date: Date
 }) {
-  const { toEmail, studentName, roomBlock, roomNumber, amount, reference, date } = opts
-
+  const { to, studentName, roomBlock, roomNumber, amount, reference, date } = opts
   let attachments: any[] = []
 
+  const nairaAmount = amount / 100
+
+
   try {
-    // 1) Create a new PDF document and register fontkit
+    // PDF generation
     const pdfDoc = await PDFDocument.create()
     pdfDoc.registerFontkit(fontkit as any)
 
-    // 2) Embed custom font
     const fontPath = path.join(process.cwd(), 'public', 'fonts', 'static', 'Roboto-Regular.ttf')
     const fontBytes = fs.readFileSync(fontPath)
     const customFont = await pdfDoc.embedFont(fontBytes)
 
-    // 3) Embed logo image (PNG) at top-right
-    const logoPath = path.join(process.cwd(), 'public', 'logo.png')
-    let logoImage;
+    let logoImage
     try {
-      const logoBytes = fs.readFileSync(logoPath)
-      // Choose embedPng or embedJpg based on file type
+      const logoBytes = fs.readFileSync(path.join(process.cwd(), 'public', 'logo.png'))
       logoImage = await pdfDoc.embedPng(logoBytes)
-    } catch (_) {
+    } catch {
       logoImage = null
     }
 
-    // 4) Create page
-    const page = pdfDoc.addPage([612, 792]) // Letter size
+    const page = pdfDoc.addPage([612, 792])
     const { width, height } = page.getSize()
     const margin = 50
 
-    // 5) Draw logo at top-right
     if (logoImage) {
-      const logoDims = logoImage.scale(0.25) // scale down to 25%
+      const dims = logoImage.scale(0.25)
       page.drawImage(logoImage, {
-        x: width - logoDims.width - margin,
-        y: height - logoDims.height - margin,
-        width: logoDims.width,
-        height: logoDims.height,
+        x: width - dims.width - margin,
+        y: height - dims.height - margin,
+        width: dims.width,
+        height: dims.height,
       })
     }
 
-    // 6) Draw header text
     page.drawText(process.env.SCHOOL_NAME || 'Hostel Management', {
       x: margin,
       y: height - margin - 20,
@@ -73,54 +90,49 @@ export async function sendPaymentReceipt(opts: {
       color: rgb(0, 0, 0),
     })
 
-    // 7) Draw receipt details
-    const fontSize = 14
     const startY = height - margin - 60
-    page.drawText('Payment Receipt', {
-      x: margin,
-      y: startY,
-      size: 16,
-      font: customFont,
-    })
+    page.drawText('Payment Receipt', { x: margin, y: startY, size: 16, font: customFont })
+
     const details = [
       `Date: ${date.toLocaleString()}`,
       `Reference: ${reference}`,
       `Student: ${studentName}`,
       `Room: ${roomBlock}-${roomNumber}`,
-      `Amount Paid: ₦${amount.toLocaleString()}`,
+      `Amount Paid: ₦${nairaAmount.toLocaleString()}`,
     ]
     details.forEach((line, idx) => {
       page.drawText(line, {
         x: margin,
-        y: startY - (idx + 1) * (fontSize + 4),
-        size: fontSize,
+        y: startY - (idx + 1) * 18,
+        size: 14,
         font: customFont,
       })
     })
 
-    // 8) Footer
     page.drawText('Thank you for your payment.', {
       x: margin,
-      y: startY - (details.length + 2) * (fontSize + 4),
-      size: fontSize,
+      y: startY - (details.length + 2) * 18,
+      size: 14,
       font: customFont,
     })
 
-    // 9) Serialize to PDF bytes
     const pdfBytes = await pdfDoc.save()
     attachments.push({ filename: `receipt-${reference}.pdf`, content: Buffer.from(pdfBytes), contentType: 'application/pdf' })
   } catch (err) {
-    console.error('[Mailer] pdf-lib generation failed, sending plain email', err)
+    console.error('[Mailer] PDF generation failed, sending plain email', err)
   }
 
-  // 10) Send email
+  // send email with or without attachment
   await transporter.sendMail({
     from: `"${process.env.SCHOOL_NAME}" <${process.env.SMTP_USER}>`,
-    to:   toEmail,
+    to,
     subject: `Payment Receipt — ${reference}`,
     html: `
       <p>Hi ${studentName},</p>
-      <p>Thank you for your payment of <strong>₦${amount.toLocaleString()}</strong> for room <strong>${roomBlock}-${roomNumber}</strong> on ${date.toLocaleDateString()}.</p>
+      <p>Thank you for your payment of 
+         <strong>₦${nairaAmount.toLocaleString()}</strong>
+         for room <strong>${roomBlock}-${roomNumber}</strong> 
+         on ${date.toLocaleDateString()}.</p>
       <p>Your reference is <code>${reference}</code>.</p>
       <p>– ${process.env.SCHOOL_NAME}</p>
     `,

@@ -24,16 +24,21 @@ interface TicketThread {
   studentId: number
 }
 
-type Props = { params: { id: string } }
+type Props = {
+  params: { id: string }
+}
 
-export default async function TicketThreadPage({ params }: { params: any }) {
+export default async function TicketThreadPage({ params }: Props) {
   // Protect route
   const session = await getServerSession(authOptions)
   if (!session?.user?.role || session.user.role !== 'student') {
     redirect('/')
   }
+
+  // **AWAIT** the `params` proxy before accessing .id
+  const { id } = await params
   const studentId = Number(session.user.id)
-  const ticketId  = Number(params.id)
+  const ticketId  = Number(id)
 
   // Fetch ticket and replies
   const ticket = await prisma.ticket.findUnique({
@@ -59,7 +64,7 @@ export default async function TicketThreadPage({ params }: { params: any }) {
 
         {/* Ticket Details */}
         <div className="bg-white p-6 rounded-lg shadow space-y-4">
-          <h2 className="text-2xl font-semibold">{ticket.subject}</h2>
+          <h2 className="text-2xl font-semibold text-gray-900">{ticket.subject}</h2>
           <p className="text-gray-800 whitespace-pre-wrap">{ticket.message}</p>
           {ticket.imageUrl && (
             <img
@@ -72,30 +77,28 @@ export default async function TicketThreadPage({ params }: { params: any }) {
 
         {/* Thread Replies */}
         <div className="flex flex-col space-y-4">
-  {ticket.replies.map((r) => (
-    <div
-      key={r.id}
-      className={`flex ${
-        r.author === 'admin' ? 'justify-start' : 'justify-end' }`}
-    >
-      <div
-        // Bubble styling
-        className={`
-          max-w-[70%]           
-          px-4 py-2            
-          rounded-lg            
-          ${r.author === 'admin'
-            ? 'bg-green-100 rounded-tl-none'  
-            : 'bg-blue-200 rounded-tr-none' } `}
-      >
-        <p className="text-gray-800 whitespace-pre-wrap">{r.message}</p>
-        <p className="text-xs text-gray-500 mt-1 text-right">
-          {new Date(r.createdAt).toLocaleTimeString()}
-        </p>
-      </div>
-    </div>
-  ))}
-    </div>
+          {ticket.replies.map((r) => (
+            <div
+              key={r.id}
+              className={`flex ${r.author === 'admin' ? 'justify-start' : 'justify-end'}`}
+            >
+              <div
+                className={`
+                  max-w-[70%]
+                  px-4 py-2
+                  rounded-lg
+                  ${r.author === 'admin'
+                    ? 'bg-green-100 rounded-tl-none'
+                    : 'bg-blue-200 rounded-tr-none'}`}
+              >
+                <p className="text-gray-800 whitespace-pre-wrap">{r.message}</p>
+                <p className="text-xs text-gray-500 mt-1 text-right">
+                  {new Date(r.createdAt).toLocaleTimeString()}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
 
         {/* Reply Form or Closed Notice */}
         {ticket.status === 'OPEN' ? (

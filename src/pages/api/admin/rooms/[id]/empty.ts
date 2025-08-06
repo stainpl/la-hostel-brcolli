@@ -1,8 +1,10 @@
 // src/pages/api/admin/rooms/[id]/empty.ts
 import { NextApiRequest, NextApiResponse } from 'next'
-import { prisma } from '../../../../../../lib/prisma'
+import { prisma } from '@/lib/prisma'
+import { withLogging }                  from '@/lib/withLogging'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+
+ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const roomId = Number(req.query.id)
   if (req.method !== 'PATCH') {
     res.setHeader('Allow', ['PATCH'])
@@ -19,3 +21,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   })
   return res.status(200).json(room)
 }
+
+export default withLogging(handler, 'admin.rooms.empty')
