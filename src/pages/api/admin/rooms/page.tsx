@@ -285,3 +285,5 @@ export default function AdminRoomsPage() {
         )}
       </main>
     </div>
+  )
+}
