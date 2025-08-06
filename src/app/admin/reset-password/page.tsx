@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import axios from 'axios'
-import { Input } from "@/components/ui/Input"
+import  Input  from "@/components/ui/Input"
 
 export default function ResetPasswordPage() {
   const router       = useRouter()
