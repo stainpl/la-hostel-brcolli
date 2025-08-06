@@ -1,10 +1,8 @@
-// src/pages/api/admin/students/[id].ts
 import { NextApiRequest, NextApiResponse } from 'next'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import { prisma } from '@/lib/prisma'
 import { IncomingForm } from 'formidable'
-import fs from 'fs'
 import path from 'path'
 import { withLogging } from '@/lib/withLogging'
 
