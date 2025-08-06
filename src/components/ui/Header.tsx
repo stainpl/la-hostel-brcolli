@@ -1,4 +1,3 @@
-// src/components/ui/Header.tsx
 'use client'
 
 import { useRouter } from 'next/navigation'
@@ -17,6 +16,8 @@ interface HeaderProps {
 }
 
 export default function Header({ current, onChange }: HeaderProps) {
+  const router = useRouter()
+  
   return (
     <header className="relative z-10 w-full max-w-2xl mx-auto mt-8 flex justify-center space-x-8">
       {navItems.map(({ label, view }) => (
