@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import axios from 'axios'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 export type StudentData = {
   id:            number
@@ -120,7 +121,14 @@ export default function EditStudentForm({ initialData }: Props) {
       <div className="flex space-x-6">
         <div className="w-32 h-32">
           {previewUrl ? (
-            <img src={previewUrl} alt="Preview" className="w-full h-full object-cover rounded-full" />
+            <Image
+              src={previewUrl}
+              alt="Preview"
+              width={128}
+              height={128}
+              className="object-cover rounded-full"
+              unoptimized
+            />
           ) : (
             <div className="w-full h-full bg-gray-500 rounded-full flex items-center justify-center">
               No Photo
