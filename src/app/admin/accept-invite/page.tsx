@@ -1,4 +1,3 @@
-// app/admin/accept-invite/page.tsx
 'use client'
 
 import React, { useState, useEffect } from 'react'
@@ -58,8 +57,12 @@ export default function AcceptInvitePage() {
       await axios.post('/api/admin/admins/accept-invite', { token, password })
       toast({ title: 'Success', description: 'Your password has been set.' })
       router.push('/')
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to accept invite.')
+    } catch (error: unknown) {
+    if (axios.isAxiosError(error) && error.response?.data?.message) {
+      setError(error.response.data.message)
+    } else {
+       setError('Failed to accept invite.')
+     }
     } finally {
       setLoading(false)
     }
