@@ -1,15 +1,13 @@
 // src/app/dashboard/admin/tickets/[id]/page.tsx
 import React from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import axios from 'axios'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import AdminReplyForm from '@/components/forms/AdminReplyForm'
-import CloseTicketButton from '@/components/ui/CloseTicketButton'
-
-
 
 type Reply = {
   id:        number
@@ -41,26 +39,26 @@ export default async function AdminTicketPage({
     redirect('/auth/login')
   }
 
-  const p = await params as Record<string, string>
+  const p = (await params) as Record<string, string>
   const ticketId = Number(p.id)
 
   // 2) Fetch ticket + replies + student info
   const ticket = (await prisma.ticket.findUnique({
-  where: { id: ticketId },
-  include: {
-    student: { select: { fullName: true, email: true } },
-    replies: { orderBy: { createdAt: 'asc' } },
-  },
-})) as TicketWithReplies | null
+    where: { id: ticketId },
+    include: {
+      student: { select: { fullName: true, email: true } },
+      replies: { orderBy: { createdAt: 'asc' } },
+    },
+  })) as TicketWithReplies | null
 
   if (!ticket) {
     redirect('/dashboard/admin/tickets')
   }
 
+  // 3) Close-ticket handler
   const handleClose = async () => {
     if (!confirm('Close this ticket?')) return
     await axios.patch(`/api/admin/tickets/${ticketId}/close`)
-    // Refresh the page to update status
     window.location.reload()
   }
 
@@ -74,52 +72,77 @@ export default async function AdminTicketPage({
           >
             ← Back to Tickets
           </Link>
-          {ticket.status === 'OPEN' && (<CloseTicketButton ticketId={ticketId} />)}
+
+          {ticket.status === 'OPEN' && (
+            <button
+              onClick={handleClose}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              Close Ticket
+            </button>
+          )}
         </header>
 
         {/* Ticket Header */}
         <div className="bg-white p-6 rounded-lg shadow space-y-2">
-          <h2 className="text-2xl font-semibold text-gray-800">{ticket.subject}</h2>
-          <p className="text-gray-700 whitespace-pre-wrap">{ticket.message}</p>
+          <h2 className="text-2xl font-semibold text-gray-800">
+            {ticket.subject}
+          </h2>
+          <p className="text-gray-700 whitespace-pre-wrap">
+            {ticket.message}
+          </p>
+
           {ticket.imageUrl && (
-            <img
-              src={ticket.imageUrl}
-              alt="Attachment"
-              className="max-w-full rounded"
-            />
+            <div className="relative w-full h-64 rounded overflow-hidden">
+              <Image
+                src={ticket.imageUrl}
+                alt="Attachment"
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-contain"
+              />
+            </div>
           )}
+
           <div className="text-sm text-gray-500">
             Opened by{' '}
-            <span className="font-medium">{ticket.student.fullName}</span>{' '}
+            <span className="font-medium">
+              {ticket.student.fullName}
+            </span>{' '}
             ({ticket.student.email}) on{' '}
             {new Date(ticket.createdAt).toLocaleString()}
           </div>
         </div>
 
-              {/* Replies Thread */}
+        {/* Replies Thread */}
         <div className="flex flex-col space-y-4">
-            {ticket.replies.map((r) => (
-           <div key={r.id} className={`flex ${
-        r.author === 'admin' ? 'justify-start' : 'justify-end'}`}
-    >
+          {ticket.replies.map((r) => (
             <div
-        // Bubble styling
-        className={`
-          max-w-[70%]            
-          px-4 py-2             
-          rounded-lg            
-          ${r.author === 'admin'
-            ? 'bg-green-100 rounded-tl-none' 
-            : 'bg-blue-200 rounded-tr-none'   }`}
-      >
-        <p className="text-gray-800 whitespace-pre-wrap">{r.message}</p>
-        <p className="text-xs text-gray-500 mt-1 text-right">
-          {new Date(r.createdAt).toLocaleTimeString()}
-        </p>
-      </div>
-    </div>
-   ))}
-      </div>
+              key={r.id}
+              className={`flex ${
+                r.author === 'admin' ? 'justify-start' : 'justify-end'
+              }`}
+            >
+              <div
+                className={`
+                  max-w-[70%]
+                  px-4 py-2
+                  rounded-lg
+                  ${r.author === 'admin'
+                    ? 'bg-green-100 rounded-tl-none'
+                    : 'bg-blue-200 rounded-tr-none'
+                  }`}
+              >
+                <p className="text-gray-800 whitespace-pre-wrap">
+                  {r.message}
+                </p>
+                <p className="text-xs text-gray-500 mt-1 text-right">
+                  {new Date(r.createdAt).toLocaleTimeString()}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
 
         {/* Admin Reply Form */}
         {ticket.status === 'OPEN' ? (
