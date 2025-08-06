@@ -230,7 +230,7 @@ export default function AdminDashboard() {
         description={
           <div className="space-y-2">
             <p>
-              You&apos;re about to clear every student&apos;s room assignment and reset
+              You&#39re about to clear every student&#39s room assignment and reset
               payment flags. Enter the new session label below:
             </p>
             <input
