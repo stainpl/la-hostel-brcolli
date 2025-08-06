@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { toast } from 'react-hot-toast'
 import axios from 'axios'
 import Spinner from '../ui/Spinner'
+import Image from 'next/image'
 
 export default function RegistrationForm() {
   const [form, setForm] = useState({
@@ -258,11 +259,14 @@ export default function RegistrationForm() {
         {previewUrl && (
           <div className="mt-3">
             <p className="text-sm text-gray-600 mb-1">Preview:</p>
-            <img
-              src={previewUrl}
-              alt="Profile Preview"
-              className="w-24 h-24 object-cover rounded-full border border-gray-300 shadow-sm"
-            />
+            <Image
+            src={previewUrl}
+            alt="Profile Preview"
+            width={96}
+            height={96}
+            className="object-cover rounded-full border border-gray-300 shadow-sm"
+            unoptimized
+         />
           </div>
         )}
       </div>
