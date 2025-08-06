@@ -27,7 +27,7 @@ export default function AcceptInvitePage() {
       try {
         await axios.get(`/api/admin/admins/accept-invite?token=${token}`)
         setValid(true)
-      } catch (_) {
+      } catch {
         setValid(false)
       }
     }
