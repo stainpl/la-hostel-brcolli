@@ -18,7 +18,7 @@ export default function ForgotPasswordForm() {
     })
     if (!res.ok) throw new Error('Network error')
     toast.success('If that email exists, a reset link has been sent.')
-  } catch (error) {
+  } catch (_error) {
     toast.error('Failed to send reset link. Please try again.')
   } finally {
     setLoading(false)
