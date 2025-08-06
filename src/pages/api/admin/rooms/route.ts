@@ -4,7 +4,7 @@ import { authOptions }                 from '@/pages/api/auth/[...nextauth]'
 import { prisma }                      from '@/lib/prisma'
 
 
-export async function GET(_req: NextRequest) {
+export async function GET() {
   // 1) Fetch rooms + students
   const roomsRaw = await prisma.room.findMany({
     include: {
