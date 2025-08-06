@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, ChangeEvent, FormEvent } from 'react'
+import { useState,  ChangeEvent, FormEvent } from 'react'
 import Modal from './Modal'
 import axios from 'axios'
 import { toast } from 'react-hot-toast'
+import Image from 'next/image'
 
 export type StudentDTO = {
   id: number
@@ -197,11 +198,16 @@ export default function StudentEditModal({ student, onClose, onSave }: Props) {
             className="w-full"
           />
           {form.profilePhoto && (
-            <img
-              src={photoFile ? URL.createObjectURL(photoFile) : form.profilePhoto}
-              alt="Preview"
-              className="mt-2 w-32 h-32 object-cover rounded"
-            />
+            <div className="mt-2 rounded overflow-hidden">
+              <Image
+                src={photoFile ? URL.createObjectURL(photoFile) : form.profilePhoto}
+                alt="Preview"
+                width={128}
+                height={128}
+                className="object-cover"
+                unoptimized
+              />
+            </div>
           )}
         </div>
         <div className="col-span-2 flex justify-end space-x-2 mt-4">
