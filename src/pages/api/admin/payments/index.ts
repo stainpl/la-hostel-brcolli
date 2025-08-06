@@ -1,67 +1,54 @@
-// pages/api/admin/payments/index.ts
+// src/pages/api/admin/payments/index.ts
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { getServerSession }            from 'next-auth/next'
 import { authOptions }                 from '@/pages/api/auth/[...nextauth]'
 import { prisma }                      from '@/lib/prisma'
 import { withLogging }                 from '@/lib/withLogging'
 import { sendPaymentReceipt }          from '@/lib/mailer'
-import { Prisma }                      from '@prisma/client'
-
-
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // guard: ensure admin is logged in
+  // 0) Auth – only admins
   const session = await getServerSession(req, res, authOptions)
   if (!session?.user?.role || session.user.role !== 'admin') {
     return res.status(401).json({ message: 'Unauthorized' })
   }
   const adminId = Number(session.user.id)
 
-  // ─── GET: search student or list recent payments
+  // 1) GET: search or list recent payments
   if (req.method === 'GET') {
-  const { q, page } = req.query
+    const { q } = req.query
 
-  // 1) If there's a q string, return that student
-  if (typeof q === 'string' && q.trim()) {
-    const student = await prisma.student.findFirst({
-      where: {
-        OR: [
-          { fullName:    { contains: q, mode: 'insensitive' } },
-          { email:       { contains: q, mode: 'insensitive' } },
-          { regNo:       { contains: q, mode: 'insensitive' } },
-        ],
-      },
-      select: {
-        id:          true,
-        fullName:    true,
-        email:       true,
-        hasPaid:     true,
-        sessionYear: true,
-        room: {
-          select: {
-            id:     true,
-            block:  true,
-            number: true,
-            price:  true,
+    if (typeof q === 'string' && q.trim()) {
+      // --- Perform student lookup ---
+      const student = await prisma.student.findFirst({
+        where: {
+          OR: [
+            { fullName: { contains: q, mode: 'insensitive' } },
+            { email:    { contains: q, mode: 'insensitive' } },
+            { regNo:    { contains: q, mode: 'insensitive' } },
+          ],
+        },
+        select: {
+          id:          true,
+          fullName:    true,
+          email:       true,
+          sessionYear: true,
+          hasPaid:     true,
+          room: {
+            select: {
+              block:  true,
+              number: true,
+            },
           },
         },
-      },
-    })
-    return res.status(200).json({ student })
-  }
+      })
+      return res.status(200).json({ student })
+    }
 
-  // 2) No q → return payments in pages of 20
-  const TAKE    = 15
-  const pageNum = Math.max(1, parseInt((page as string) || '1', 10))
-  const skip    = (pageNum - 1) * TAKE
-
-  // Count total and fetch current page in parallel
-  const [ total, payments ] = await Promise.all([
-    prisma.payment.count(),
-    prisma.payment.findMany({
+    // --- No query: return recent payments ---
+    const payments = await prisma.payment.findMany({
       orderBy: { createdAt: 'desc' },
-      skip,
-      take: TAKE,
+      take: 20,
       include: {
         student: {
           select: {
@@ -77,39 +64,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           select: { email: true },
         },
       },
-    }),
-  ])
+    })
+    return res.status(200).json({ payments })
+  }
 
-  const totalPages = Math.ceil(total / TAKE)
-  return res.status(200).json({ payments, page: pageNum, totalPages })
-}
-
-  // ─── POST: manually mark student paid 
+  // 2) POST: manually mark a student paid
   if (req.method === 'POST') {
     const { studentId } = req.body as { studentId?: number }
     if (!studentId) {
       return res.status(400).json({ message: 'studentId is required' })
     }
 
-    // grab student + room + hasPaid + sessionYear
     const student = await prisma.student.findUnique({
-      where: { id: studentId },
-      select: {
-        fullName:    true,
-        email:       true,
-        hasPaid:     true,
-        sessionYear: true,
-        room: {
-          select: {
-            id:     true,
-            block:  true,
-            number: true,
-            price:  true,
-          },
-        },
-      },
+      where:   { id: studentId },
+      include: { room: true },
     })
-
     if (!student || !student.room) {
       return res.status(400).json({ message: 'Student or room not found' })
     }
@@ -117,31 +86,29 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(409).json({ message: 'Student has already paid' })
     }
 
-    // build payment details
+    // build & save the payment
     const reference = `manual_${Date.now()}`
-    const amount    = student.room.price * 100 
-
-    // Use the unchecked input so TS knows raw FKs are allowed:
+    const amount    = student.room.price * 100  // in kobo
     const payment = await prisma.payment.create({
       data: {
-        reference,
+        studentId,
+        adminId,                  // now optional in your schema
+        roomId:      student.room.id,
         amount,
+        reference,
         method:      'manual',
         status:      'confirmed',
-        studentId,                    
-        adminId,                      
-        roomId: student.room.id,    
-        sessionYear: student.sessionYear, 
-      } as Prisma.PaymentUncheckedCreateInput,
+        sessionYear: student.sessionYear, // now string in both models
+      },
     })
 
-    // mark student as paid in their record
+    // mark the student paid
     await prisma.student.update({
       where: { id: studentId },
       data:  { hasPaid: true },
     })
 
-    // send email receipt
+    // send receipt email
     await sendPaymentReceipt({
       to:           student.email!,
       studentName:  student.fullName,
@@ -155,7 +122,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(201).json({ payment })
   }
 
-  // ─── FALLBACK ───────────────────────────────────────────────────────────────────
+  // 3) Fallback: method not allowed
   res.setHeader('Allow', ['GET', 'POST'])
   return res.status(405).json({ message: `Method ${req.method} Not Allowed` })
 }
