@@ -1,9 +1,9 @@
-import NextAuth, { NextAuthOptions, Session } from 'next-auth'
+import NextAuth, { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcrypt'
 
-declare module "next-auth" {
+declare module 'next-auth' {
   interface Session {
     user: {
       id: string
@@ -21,6 +21,7 @@ declare module "next-auth" {
     role?: string | null
   }
 }
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -32,7 +33,7 @@ export const authOptions: NextAuthOptions = {
         role:     { label: 'Role',           type: 'hidden' },
       },
       async authorize(credentials) {
-        const { email, password, role } = credentials as { email?: string; password?: string; role?: string };
+        const { email, password, role } = credentials as { email?: string; password?: string; role?: string }
         if (!email || !password || !role) return null
 
         if (role === 'admin') {
@@ -68,7 +69,6 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async jwt({ token, user }) {
-      // On initial sign-in, persist all fields from the user object:
       if (user) {
         token.id    = user.id
         token.email = user.email
@@ -78,7 +78,6 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async session({ session, token }) {
-      // Make sure session.user has id, email, name, and role:
       session.user.id    = token.id   as string
       session.user.email = token.email as string
       session.user.name  = token.name  as string
@@ -88,11 +87,12 @@ export const authOptions: NextAuthOptions = {
   },
 
   pages: {
-    signIn: '/',       // your main login page
+    signIn: '/',
   },
   session: {
     strategy: 'jwt',
   },
   secret: process.env.NEXTAUTH_SECRET,
 }
+
 export default NextAuth(authOptions)
