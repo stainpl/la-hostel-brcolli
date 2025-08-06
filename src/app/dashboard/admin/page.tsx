@@ -226,11 +226,11 @@ export default function AdminDashboard() {
         <ConfirmModal
         isOpen={sessionModalOpen}
         
-        title={<span className="text-gray-500">Start Fresh Session?</span>}
+        title={<span className="text-gray-500">Start Fresh Session.</span>}
         description={
           <div className="space-y-2">
             <p>
-              You're about to clear every student's room assignment and reset
+              You&apos;re about to clear every student&apos;s room assignment and reset
               payment flags. Enter the new session label below:
             </p>
             <input
