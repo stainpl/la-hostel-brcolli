@@ -34,8 +34,8 @@ export default function AdminRoomsPage() {
 
   // Helper to load both lists
   const loadRooms = async () => {
-    const res = await axios.get<Room[]>('/api/admin/rooms')
-    const all = res.data
+    const response = await axios.get<Room[]>('/api/admin/rooms')
+    const all = response.data
     setRooms(all.filter((r) => r.isFilled))
     setEmptyRooms(all.filter((r) => !r.isFilled))
   }
@@ -65,7 +65,7 @@ export default function AdminRoomsPage() {
 
     // --- POST only ---
     try {
-      const res = await axios.post<Room>('/api/admin/rooms', {
+      await axios.post<Room>('/api/admin/rooms', {
         block: blockVal,
         number: numberVal,
         price: priceVal,
@@ -74,7 +74,7 @@ export default function AdminRoomsPage() {
       e.currentTarget.reset()
     } catch (err: any) {
       if (axios.isAxiosError(err) && err.response?.status === 409) {
-        toast.error(err.response.data.message) // duplicate
+        toast.error(err.response.data.message)
       } else {
         console.error('Error creating room:', err)
         toast.error('Unexpected error creating room')
@@ -113,10 +113,10 @@ export default function AdminRoomsPage() {
   // 3) View occupants in modal
   const viewOccupants = async (room: Room) => {
     try {
-      const res = await axios.get<StudentBrief[]>(
+      const response = await axios.get<StudentBrief[]>(
         `/api/admin/rooms/${room.id}/occupants`
       )
-      setOccupants(res.data)
+      setOccupants(response.data)
       setSelectedRoom(room)
       setShowModal(true)
     } catch (err) {
@@ -133,9 +133,7 @@ export default function AdminRoomsPage() {
           <button
             key={act}
             onClick={() => setAction(act)}
-            className={`block w-full text-left font-bold uppercase ${
-              action === act ? 'text-indigo-400' : 'text-white'
-            }`}
+            className={`block w-full text-left font-bold uppercase ${act === action ? 'text-indigo-400' : 'text-white'}`}
           >
             {act === 'new'
               ? 'New Block & Room'
@@ -189,9 +187,7 @@ export default function AdminRoomsPage() {
               >
                 {creating ? (
                   <Spinner size={20} colorClass="text-white" />
-                ) : (
-                  'Create'
-                )}
+                ) : 'Create'}
               </button>
             </form>
           </Card>
@@ -200,9 +196,7 @@ export default function AdminRoomsPage() {
         {/* Fill / Empty Controls */}
         {(action === 'fill' || action === 'empty') && (
           <Card>
-            <h2 className="text-2xl mb-4">
-              {action === 'fill' ? 'Mark as Filled' : 'Empty a Room'}
-            </h2>
+            <h2 className="text-2xl mb-4">{action === 'fill' ? 'Mark as Filled' : 'Empty a Room'}</h2>
             <Table
               data={action === 'fill' ? emptyRooms : rooms}
               columns={[
@@ -214,9 +208,7 @@ export default function AdminRoomsPage() {
                   accessor: 'id',
                   cell: (_: number, row: Room) => (
                     <button
-                      onClick={() =>
-                        markRoom(row, action === 'fill')
-                      }
+                      onClick={() => markRoom(row, action === 'fill')}
                       className="btn-secondary text-sm"
                     >
                       {action === 'fill' ? 'Mark Filled' : 'Empty Room'}
@@ -252,9 +244,7 @@ export default function AdminRoomsPage() {
             ]}
           />
 
-          <h2 className="text-2xl uppercase font-bold mt-8 mb-4">
-            Empty Rooms
-          </h2>
+          <h2 className="text-2xl uppercase font-bold mt-8 mb-4">Empty Rooms</h2>
           <Table
             data={emptyRooms}
             columns={[
@@ -295,5 +285,3 @@ export default function AdminRoomsPage() {
         )}
       </main>
     </div>
-  )
-}
