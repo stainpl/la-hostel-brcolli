@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import axios from 'axios'
-import Textarea   from '@/components/ui/Textarea'
+import { Input } from "@/components/ui/Input"
 
 export default function ResetPasswordPage() {
   const router       = useRouter()
@@ -86,25 +86,26 @@ export default function ResetPasswordPage() {
           <>
             {error && <p className="mb-2 text-red-500">{error}</p>}
             <label className="block mb-2">
-              <span className="text-sm font-medium text-gray-500">New Password</span>
-              <Textarea
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                placeholder="new password"
-       placeholderClassName="placeholder:font-bold placeholder-gray-600 placeholder-opacity-100"
-         className="w-full h-24 resize-y text-gray-800 border rounded-lg px-3 py-2"
-              />
-            </label>
-            <label className="block mb-4">
+  <span className="text-sm font-medium text-gray-500">New Password</span>
+  <Input
+    type="password"
+    value={password}
+    onChange={e => setPassword(e.target.value)}
+    required
+    placeholder="••••••••"
+    className="w-full rounded-lg border px-3 py-2 text-gray-800"
+  />
+</label>
+
+<label className="block mb-4">
   <span className="text-sm font-medium text-gray-500">Confirm Password</span>
-  <Textarea
+  <Input
+    type="password"
     value={confirm}
     onChange={e => setConfirm(e.target.value)}
     required
-    placeholder="Confirm password"
-    placeholderClassName="placeholder:font-bold placeholder-gray-600 placeholder-opacity-100"
-    className="w-full h-24 resize-y text-gray-800 border rounded-lg px-3 py-2"
+    placeholder="••••••••"
+    className="w-full rounded-lg border px-3 py-2 text-gray-800"
   />
 </label>
             <button
