@@ -1,4 +1,3 @@
-// src/lib/mailer.ts
 import nodemailer from 'nodemailer'
 import { PDFDocument, rgb } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
@@ -46,7 +45,7 @@ export async function sendPaymentReceipt(opts: {
   date: Date
 }) {
   const { to, studentName, roomBlock, roomNumber, amount, reference, date } = opts
-  let attachments: any[] = []
+  const attachments: any[] = []
 
   const nairaAmount = amount / 100
 
