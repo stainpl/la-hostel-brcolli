@@ -6,18 +6,21 @@ import axios from 'axios'
 import Button from '@/components/ui/button'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 
-
 export type RoomWithCounts = {
-  id:            number
-  label:         string
-  block:         string
-  number:        number
-  price:         number
-  gender:        'MALE' | 'FEMALE'
+  id: number
+  label: string
+  block: string
+  number: number
+  price: number
+  gender: 'MALE' | 'FEMALE'
   totalStudents: number
-  paidCount:     number
+  paidCount: number
   students: Array<{ hasPaid: boolean }>
 }
+
+type Gender = 'MALE' | 'FEMALE'
+type GenderFilter = 'ALL' | Gender
+type OccupancyFilter = 'ALL' | 'OCCUPIED' | 'EMPTY'
 
 interface Props {
   rooms: RoomWithCounts[]
@@ -25,18 +28,18 @@ interface Props {
 
 export default function RoomsAdminClient({ rooms }: Props) {
   // — Form state —
-  const [block,      setBlock]      = useState('')
+  const [block, setBlock] = useState('')
   const [roomNumber, setRoomNumber] = useState('')
-  const [price,      setPrice]      = useState('')
-  const [gender,     setGender]     = useState<'MALE'|'FEMALE'>('MALE')
-  const [adding,     setAdding]     = useState(false)
-  const [error,      setError]      = useState<string|null>(null)
+  const [price, setPrice] = useState('')
+  const [gender, setGender] = useState<Gender>('MALE')
+  const [adding, setAdding] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // — Filter & modal state —
-  const [filterGender, setFilterGender] = useState<'ALL'|'MALE'|'FEMALE'>('ALL')
-  const [filterOcc,    setFilterOcc]    = useState<'ALL'|'OCCUPIED'|'EMPTY'>('ALL')
-  const [modalOpen,    setModalOpen]    = useState(false)
-  const [selectedRoom, setSelectedRoom] = useState<RoomWithCounts|null>(null)
+  const [filterGender, setFilterGender] = useState<GenderFilter>('ALL')
+  const [filterOcc, setFilterOcc] = useState<OccupancyFilter>('ALL')
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectedRoom, setSelectedRoom] = useState<RoomWithCounts | null>(null)
 
   // 1) Add room
   const handleAdd = async (e: React.FormEvent) => {
@@ -51,18 +54,25 @@ export default function RoomsAdminClient({ rooms }: Props) {
     setAdding(true)
     try {
       await axios.post('/api/admin/rooms', {
-        block:  block.toUpperCase(),
+        block: block.toUpperCase(),
         number: num,
-        price:  amt,
+        price: amt,
         gender,
       })
-      setBlock(''); setRoomNumber(''); setPrice(''); setGender('MALE')
+      setBlock('')
+      setRoomNumber('')
+      setPrice('')
+      setGender('MALE')
       window.location.reload()
-    } catch (err: any) {
+    } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 409) {
-        setError(`Room ${block.toUpperCase()}-${num} for ${gender.toLowerCase()}s already exists.`)
-      } else {
+        setError(
+          `Room ${block.toUpperCase()}-${num} for ${gender.toLowerCase()}s already exists.`
+        )
+      } else if (axios.isAxiosError(err)) {
         setError(err.response?.data?.message || 'Failed to add room.')
+      } else {
+        setError('An unexpected error occurred.')
       }
     } finally {
       setAdding(false)
@@ -70,16 +80,22 @@ export default function RoomsAdminClient({ rooms }: Props) {
   }
 
   // 2) Filters
-  const filtered = rooms.filter(r => {
+  const filtered = rooms.filter((r) => {
     if (filterGender !== 'ALL' && r.gender !== filterGender) return false
     if (filterOcc === 'OCCUPIED' && r.totalStudents === 0) return false
-    if (filterOcc === 'EMPTY'    && r.totalStudents > 0)  return false
+    if (filterOcc === 'EMPTY' && r.totalStudents > 0) return false
     return true
   })
 
   // 3) Modal open/close
-  const openDetails  = (r: RoomWithCounts) => { setSelectedRoom(r); setModalOpen(true) }
-  const closeDetails = ()                 => { setModalOpen(false); setSelectedRoom(null) }
+  const openDetails = (r: RoomWithCounts) => {
+    setSelectedRoom(r)
+    setModalOpen(true)
+  }
+  const closeDetails = () => {
+    setModalOpen(false)
+    setSelectedRoom(null)
+  }
 
   // 4) Mark filled
   const markFilled = async (id: number) => {
@@ -106,7 +122,7 @@ export default function RoomsAdminClient({ rooms }: Props) {
           <label className="block text-sm font-medium text-gray-950">Block</label>
           <input
             value={block}
-            onChange={e => setBlock(e.target.value)}
+            onChange={(e) => setBlock(e.target.value)}
             className="input w-full text-gray-500"
             placeholder="A, B, C…"
             disabled={adding}
@@ -117,7 +133,7 @@ export default function RoomsAdminClient({ rooms }: Props) {
           <label className="block text-sm font-medium text-gray-950">Room No</label>
           <input
             value={roomNumber}
-            onChange={e => setRoomNumber(e.target.value)}
+            onChange={(e) => setRoomNumber(e.target.value)}
             type="number"
             className="input w-full text-gray-500"
             disabled={adding}
@@ -128,7 +144,7 @@ export default function RoomsAdminClient({ rooms }: Props) {
           <label className="block text-sm font-medium text-gray-950">Gender</label>
           <select
             value={gender}
-            onChange={e => setGender(e.target.value as any)}
+            onChange={(e) => setGender(e.target.value as Gender)}
             className="input w-full text-gray-500"
             disabled={adding}
           >
@@ -141,7 +157,7 @@ export default function RoomsAdminClient({ rooms }: Props) {
           <label className="block text-sm font-medium text-gray-950">Price (₦)</label>
           <input
             value={price}
-            onChange={e => setPrice(e.target.value)}
+            onChange={(e) => setPrice(e.target.value)}
             type="number"
             className="input w-full text-gray-500"
             disabled={adding}
@@ -167,7 +183,7 @@ export default function RoomsAdminClient({ rooms }: Props) {
         <select
           className="input w-full sm:w-40 text-gray-500"
           value={filterGender}
-          onChange={e => setFilterGender(e.target.value as any)}
+          onChange={(e) => setFilterGender(e.target.value as GenderFilter)}
         >
           <option value="ALL">All Genders</option>
           <option value="MALE">Male Only</option>
@@ -176,7 +192,7 @@ export default function RoomsAdminClient({ rooms }: Props) {
         <select
           className="input w-full sm:w-40 text-gray-500"
           value={filterOcc}
-          onChange={e => setFilterOcc(e.target.value as any)}
+          onChange={(e) => setFilterOcc(e.target.value as OccupancyFilter)}
         >
           <option value="ALL">All Rooms</option>
           <option value="OCCUPIED">With Participants</option>
@@ -186,7 +202,7 @@ export default function RoomsAdminClient({ rooms }: Props) {
 
       {/* Room Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-        {filtered.map(r => (
+        {filtered.map((r) => (
           <div
             key={r.id}
             className={`p-3 rounded-lg shadow cursor-pointer ${
@@ -210,9 +226,9 @@ export default function RoomsAdminClient({ rooms }: Props) {
       {/* Details Modal */}
       {modalOpen && selectedRoom && (
         <ConfirmModal
-        isOpen={modalOpen}
-        title={<span className="text-gray-500">Room {selectedRoom.label}</span>}
-        description={
+          isOpen={modalOpen}
+          title={<span className="text-gray-500">Room {selectedRoom.label}</span>}
+          description={
             <div className="space-y-2 text-sm text-gray-950">
               <p>Block: {selectedRoom.block}</p>
               <p>Room #: {selectedRoom.number}</p>
@@ -239,7 +255,7 @@ export default function RoomsAdminClient({ rooms }: Props) {
             </div>
           }
           onCancel={closeDetails}
-          onConfirm={() => null} // we handle actions via buttons
+          onConfirm={() => null}
         />
       )}
     </>
