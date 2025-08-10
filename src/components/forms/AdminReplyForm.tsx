@@ -28,8 +28,12 @@ export default function AdminReplyForm({ ticketId }: Props) {
       await axios.post(`/api/admin/tickets/${ticketId}/reply`, { message: message.trim() })
       setMessage('')
       router.refresh()
-    } catch (e: any) {
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
       setError(e.response?.data?.message || 'Failed to send reply.')
+      } else if (e instanceof Error) {
+        setError(e.message)
+      }
     } finally {
       setLoading(false)
     }
