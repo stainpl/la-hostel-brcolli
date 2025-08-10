@@ -32,15 +32,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         },
       })
       return res.status(201).json(room)
-    } catch (e: any) {
-      if (e.code === 'P2002') {
-        const msg = `Room ${block.toUpperCase()}-${number} for ${gender.toLowerCase()} already exists.`
-        return res.status(409).json({ message: msg })
-      }
-      console.error(e)
-      return res.status(500).json({ message: 'Internal server error' })
-    }
+    } catch (e: unknown) {
+  if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: string }).code === 'P2002') {
+    const msg = `Room ${block.toUpperCase()}-${number} for ${gender.toLowerCase()} already exists.`;
+    return res.status(409).json({ message: msg });
   }
+
+  console.error(e);
+  return res.status(500).json({ message: 'Internal server error' });
+}
 
   res.setHeader('Allow', ['GET','POST'])
   return res.status(405).end(`Method ${req.method} Not Allowed`)
