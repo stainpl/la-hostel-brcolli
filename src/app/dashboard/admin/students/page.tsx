@@ -5,7 +5,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import StudentsAdminClient from './StudentsAdminClient'
+import StudentsAdminClient from '../StudentsAdminClient'
 
 type RawStudent = {
   id: number
