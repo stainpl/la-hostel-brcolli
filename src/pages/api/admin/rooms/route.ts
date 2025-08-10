@@ -39,8 +39,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  // Auth (you may need to pass req into getServerSession depending on your NextAuth version)
-  const session = await getServerSession(authOptions)
+const session = await getServerSession({ req, ...authOptions });
   if (session?.user?.role !== 'admin') {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
   }
@@ -60,8 +59,8 @@ export async function POST(req: NextRequest) {
       },
     })
     return NextResponse.json(room, { status: 201 })
-  } catch (e: any) {
-    if (e.code === 'P2002') {
+  } catch (e: unknown) {
+    if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: string }).code === 'P2002') {
       return NextResponse.json(
         { message: `Room ${block.toUpperCase()}-${number} for ${gender.toLowerCase()} already exists.` },
         { status: 409 }
