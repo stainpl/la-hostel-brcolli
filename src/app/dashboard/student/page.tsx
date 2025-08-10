@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import StudentDashboardWrapper from './StudentDashboardWrapper'
 import { Bug } from 'lucide-react'
-import Image from 'next/image
+import Image from 'next/image' // <-- fixed: closing quote
 
 export default async function StudentPage() {
   // 1) Protect route
@@ -44,8 +44,8 @@ export default async function StudentPage() {
     redirect('/')
   }
 
-  // Extract first name for welcome
-  const firstName = student.fullName.split(' ')[0]
+  // Extract first name for welcome (safer fallback)
+  const firstName = (student.fullName ?? '').split(' ')[0] || 'Student'
 
   return (
     <StudentDashboardWrapper>
@@ -53,11 +53,11 @@ export default async function StudentPage() {
         <main className="max-w-4xl mx-auto p-6 space-y-8">
           {/* Welcome Header */}
           <header className="text-white">
-            <h1 className="text-2xl font-bold">Welcome, {firstName}!</h1>          
+            <h1 className="text-2xl font-bold">Welcome, {firstName}!</h1>
           </header>
 
           {/* Collapsible Profile Card */}
-          <details className="bg-gray-500 rounded-2xl shadow p-4" open={false}>
+          <details className="bg-gray-500 rounded-2xl shadow p-4">
             <summary className="cursor-pointer font-semibold text-white">
               View Profile
             </summary>
@@ -65,13 +65,12 @@ export default async function StudentPage() {
               {/* Profile photo */}
               <div className="flex-shrink-0 mb-4 md:mb-0">
                 <Image
-       src={student.profilePhoto ?? '/         avatar-placeholder.png'}
-         alt={`${student.fullName} profile`}
-         width={96} 
-         height={96}
-         className="rounded-full object-cover"
- 
-         />
+                  src={student.profilePhoto ?? '/avatar-placeholder.png'} // removed spaces
+                  alt={`${student.fullName} profile`}
+                  width={96}
+                  height={96}
+                  className="rounded-full object-cover"
+                />
               </div>
               {/* Profile details grid */}
               <div className="flex-1 grid grid-cols-2 gap-y-2 text-white">
