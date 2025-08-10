@@ -4,12 +4,33 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Spinner from '@/components/ui/Spinner'
 import toast from 'react-hot-toast'
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 
 declare global {
   interface Window {
-    PaystackPop?: any
+    PaystackPop?: {
+      setup: (options: PaystackOptions) => { openIframe: () => void }
+    }
   }
+}
+
+interface PaystackOptions {
+  key: string
+  email: string
+  amount: number
+  ref: string
+  onClose: () => void
+  callback: (response: { reference: string }) => void
+}
+
+interface InitResponse {
+  reference: string
+  email: string
+}
+
+interface VerifyResponse {
+  success: boolean
+  message?: string
 }
 
 export default function PaymentClient({ studentId }: { studentId: string }) {
@@ -20,55 +41,53 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
   const amountParam = searchParams?.get('amount')
   const roomIdParam = searchParams?.get('roomId')
 
-  if (!amountParam || !roomIdParam) {
+  // Validate params early
+  const amount = Number(amountParam)
+  const roomId = Number(roomIdParam)
+  if (!amountParam || !roomIdParam || isNaN(amount) || isNaN(roomId) || amount <= 0) {
     return <p className="text-red-500">Missing or invalid roomId or amount.</p>
   }
 
-  const amount = Number(amountParam)
-  const roomId = Number(roomIdParam)
-
-  if (isNaN(amount) || isNaN(roomId) || amount <= 0) {
-    return <p className="text-red-500">Invalid roomId or amount.</p>
-  }
-
   const handlePay = async () => {
-    if (!process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY) {
+    if (loading) return // Prevent double click
+
+    const paystackKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY
+    if (!paystackKey) {
       toast.error('Payment key missing')
+      return
+    }
+    if (!window.PaystackPop) {
+      toast.error('Payment service not loaded')
       return
     }
 
     setLoading(true)
     try {
       // Step 1: Initialize transaction
-      const { data } = await axios.post('/api/paystack/init', {
+      const { data } = await axios.post<InitResponse>('/api/paystack/init', {
         roomId,
         studentId: Number(studentId),
       })
 
-      const { reference, email } = data
-      if (!reference || !email) {
+      if (!data.reference || !data.email) {
         throw new Error('Invalid init response')
       }
 
-      // Step 2: Check PaystackPop availability
-      if (!window.PaystackPop) {
-        throw new Error('Payment service not loaded')
-      }
-
+      // Step 2: Launch Paystack widget
       const handler = window.PaystackPop.setup({
-        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
-        email,
-        amount: amount * 100, // kobo
-        ref: reference,
+        key: paystackKey,
+        email: data.email,
+        amount: amount * 100, // Paystack expects kobo
+        ref: data.reference,
         onClose: () => {
           toast('Payment popup closed.')
           setLoading(false)
           router.push('/dashboard/student')
         },
-        callback: async (response: { reference: string }) => {
+        callback: async (response) => {
           try {
             const verifyResp = await fetch(`/api/paystack/verify?reference=${response.reference}`)
-            const result = (await verifyResp.json()) as { success: boolean; message?: string }
+            const result: VerifyResponse = await verifyResp.json()
 
             if (verifyResp.ok && result.success) {
               toast.success('Payment confirmed!')
@@ -86,9 +105,13 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
       })
 
       handler.openIframe()
-    } catch (err: any) {
+    } catch (err) {
+      const message =
+        axios.isAxiosError(err)
+          ? err.response?.data?.message || err.message
+          : (err as Error).message
+      toast.error(message || 'Payment initialization failed')
       console.error('Init error:', err)
-      toast.error(err.response?.data?.message || err.message || 'Payment initialization failed')
       setLoading(false)
     }
   }
