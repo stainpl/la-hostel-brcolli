@@ -1,164 +1,144 @@
-// src/app/api/paystack/init/route.ts
-import { NextResponse } from 'next/server'
+'use client'
 
-type InitPayload = {
-  amount: number
-  email: string
-  callback_url?: string
-  reference?: string
-}
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import axios from 'axios'
+import Input from "@/components/ui/Input"
 
-/* -------------------------
-   Small runtime validators
-   ------------------------- */
-const isString = (v: unknown): v is string => typeof v === 'string' && v.trim() !== ''
-const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
-const isEmail = (v: unknown): v is string => isString(v) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
-const isUrl = (v: unknown): v is string => {
-  if (!isString(v)) return false
-  try { new URL(v); return true } catch { return false }
-}
+export default function ResetPasswordPage() {
+  const router = useRouter()
+  const params = useSearchParams()
+  const token = params?.get('token') || ''
+  const [valid, setValid] = useState<boolean | null>(null)
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-function validateInitBody(body: unknown): { ok: true; data: InitPayload } | { ok: false; errors: string[] } {
-  const errors: string[] = []
-  if (typeof body !== 'object' || body === null) {
-    return { ok: false, errors: ['Body must be an object'] }
-  }
-  const b = body as Record<string, unknown>
-
-  if (!isNumber(b.amount) || !Number.isInteger(b.amount) || b.amount <= 0) {
-    errors.push('amount must be a positive integer (smallest currency unit)')
-  }
-  if (!isEmail(b.email)) {
-    errors.push('email must be a valid email address')
-  }
-  if (b.callback_url !== undefined && !isUrl(b.callback_url)) {
-    errors.push('callback_url must be a valid URL when provided')
-  }
-  if (b.reference !== undefined && !isString(b.reference)) {
-    errors.push('reference must be a non-empty string when provided')
-  }
-
-  if (errors.length) return { ok: false, errors }
-  return {
-    ok: true,
-    data: {
-      amount: b.amount as number,
-      email: b.email as string,
-      callback_url: b.callback_url as string | undefined,
-      reference: b.reference as string | undefined,
-    },
-  }
-}
-
-/* -------------------------
-   AUTH Helpers (placeholders)
-   ------------------------- */
-
-/*
-Replace these placeholder helpers with your real auth logic.
-Examples:
- - NextAuth: getServerSession(req, options)
- - Custom JWT: verifyJwt(token)
- - Cookie session lookup: getSessionFromCookie(req)
- - Role check: ensure user is admin
-*/
-
-// Example: NextAuth-style session check (server-side)
-async function ensureAuthenticatedWithNextAuth(req: Request) {
-  // import and use getServerSession from next-auth if you use it:
-  // const session = await getServerSession(authOptions)
-  // if (!session) throw new Error('Unauthorized')
-  return { ok: true, user: { id: 'admin-id', role: 'admin' } } // placeholder
-}
-
-// Example: custom JWT check
-async function ensureAuthenticatedWithJwt(req: Request) {
-  // const auth = req.headers.get('authorization')?.split(' ')[1]
-  // if (!auth) throw new Error('Unauthorized')
-  // const payload = verifyJwt(auth) // your jwt verify function
-  return { ok: true, user: { id: 'admin-id', role: 'admin' } } // placeholder
-}
-
-// Example: API key header
-function ensureApiKey(req: Request) {
-  const key = req.headers.get('x-api-key')
-  if (!key || key !== process.env.MY_ADMIN_API_KEY) {
-    return { ok: false, message: 'Invalid API key' }
-  }
-  return { ok: true, user: { id: 'cli', role: 'system' } }
-}
-
-/* -------------------------
-   Route handler
-   ------------------------- */
-
-export async function POST(req: Request) {
-  // 0) Optional: check server config
-  const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET
-  if (!PAYSTACK_SECRET) {
-    return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 })
-  }
-
-  // 1) AUTH - choose the helper that matches your app
-  // const authResult = await ensureAuthenticatedWithNextAuth(req)
-  // const authResult = await ensureAuthenticatedWithJwt(req)
-  const authResult = ensureApiKey(req) // <-- swap to your real auth check
-
-  if (!authResult.ok) {
-    return NextResponse.json({ error: authResult.message ?? 'Unauthorized' }, { status: 401 })
-  }
-
-  // 2) parse body safely
-  let body: unknown
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
-
-  // 3) validate payload
-  const validated = validateInitBody(body)
-  if (!validated.ok) {
-    return NextResponse.json({ error: 'Invalid payload', details: validated.errors }, { status: 400 })
-  }
-  const { amount, email, callback_url, reference } = validated.data
-
-  // 4) server-side business logic (DB/logs/etc) - preserve your logic here
-  try {
-    // Example: generate or normalize reference if not provided
-    const txReference = reference ?? `tx_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
-
-    // Example: record pending transaction in DB
-    // await savePendingTransaction({ reference: txReference, amount, email, userId: authResult.user.id })
-
-    // Example: call Paystack
-    const res = await fetch('https://api.paystack.co/transaction/initialize', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${PAYSTACK_SECRET}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ amount, email, callback_url, reference: txReference }),
-    })
-
-    const data = await res.json()
-
-    if (!res.ok) {
-      // preserve Paystack response and status
-      // optionally update DB with failure status
-      return NextResponse.json({ error: data.message ?? 'Payment provider error', details: data }, { status: res.status })
+  // 1) Validate token on mount
+  useEffect(() => {
+    if (!token) {
+      setValid(false)
+      return
     }
 
-    // Success: persist Paystack response, update DB as needed
-    // await markTransactionInitialized({ reference: txReference, providerResponse: data })
+    const validate = async () => {
+      try {
+        await axios.get(`/api/admin/admins/reset-password?token=${token}`)
+        setValid(true)
+      } catch (err: unknown) {
+        // Narrow the error to give a helpful message, but don't use `any`
+        if (axios.isAxiosError(err)) {
+          // optional: check err.response?.status === 404 or error message
+          setValid(false)
+        } else {
+          setValid(false)
+        }
+      }
+    }
 
-    return NextResponse.json(data, { status: 200 })
-  } catch (err: unknown) {
-    // Narrow error safely (no any)
-    const message = err instanceof Error ? err.message : 'Unknown server error'
-    // optional: log error server-side
-    // await logError({ where: 'paystack/init', error: message })
-    return NextResponse.json({ error: message }, { status: 500 })
+    validate()
+  }, [token])
+
+  // 2) Handle form submit
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setError(null)
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.')
+      return
+    }
+    if (password !== confirm) {
+      setError("Passwords don't match.")
+      return
+    }
+    setLoading(true)
+    try {
+      await axios.post('/api/admin/admins/reset-password', { token, password })
+      setSuccess(true)
+      setTimeout(() => router.push('/'), 2000)
+    } catch (err: unknown) {
+      // Properly narrow unknown to extract a message
+      let message = 'Reset failed.'
+      if (axios.isAxiosError(err)) {
+        message = err.response?.data?.message ?? err.message ?? message
+      } else if (err instanceof Error) {
+        message = err.message
+      }
+      setError(message)
+    } finally {
+      setLoading(false)
+    }
   }
+
+  // 3) Render invalid page
+  if (valid === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="p-6 bg-white rounded shadow text-center">
+          <h2 className="text-xl font-semibold mb-4 text-red-500">Invalid or Expired Token</h2>
+          <p>This reset link is no longer valid.</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 4) Success message
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="p-6 bg-white rounded shadow text-center">
+          <h2 className="text-xl font-semibold mb-4">Password Reset!</h2>
+          <p>You can now <a className="text-indigo-600 underline" href="/auth/login">log in</a> with your new password.</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 5) Loading or form
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm bg-white p-6 rounded shadow">
+        <h2 className="text-xl font-semibold mb-4 text-green-500">Set a New Password</h2>
+        {valid === null ? (
+          <p>Validating link…</p>
+        ) : valid === true ? (
+          <>
+            {error && <p className="mb-2 text-red-500">{error}</p>}
+            <label className="block mb-2">
+              <span className="text-sm font-medium text-gray-500">New Password</span>
+              <Input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                className="w-full rounded-lg border px-3 py-2 text-gray-800"
+              />
+            </label>
+
+            <label className="block mb-4">
+              <span className="text-sm font-medium text-gray-500">Confirm Password</span>
+              <Input
+                type="password"
+                value={confirm}
+                onChange={e => setConfirm(e.target.value)}
+                required
+                placeholder="••••••••"
+                className="w-full rounded-lg border px-3 py-2 text-gray-800"
+              />
+            </label>
+            <button
+              type="submit"
+              className="btn-primary w-full"
+              disabled={loading}
+            >
+              {loading ? 'Resetting…' : 'Reset Password'}
+            </button>
+          </>
+        ) : null}
+      </form>
+    </div>
+  )
 }
