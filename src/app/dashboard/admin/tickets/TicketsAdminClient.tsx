@@ -1,28 +1,30 @@
 // src/app/dashboard/admin/tickets/TicketsAdminClient.tsx
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, ChangeEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
+export type Gender = 'MALE' | 'FEMALE' | 'ALL'
 
 export type TicketAdmin = {
-  id:        number
-  subject:   string
-  status:    'OPEN' | 'CLOSED'
-  createdAt: Date
-  student:   string
-  gender:    'MALE' | 'FEMALE'
+  id: number
+  subject: string
+  status: 'OPEN' | 'CLOSED'
+  // data from the server will usually be a string ISO timestamp
+  createdAt: string
+  student: string
+  gender: 'MALE' | 'FEMALE'
 }
 
 interface Props {
-  openTickets:       TicketAdmin[]
-  closedTickets:     TicketAdmin[]
-  openPage:          number
-  closedPage:        number
-  totalOpenPages:    number
-  totalClosedPages:  number
-  currentGender:     'MALE' | 'FEMALE' | 'ALL'
+  openTickets: TicketAdmin[]
+  closedTickets: TicketAdmin[]
+  openPage: number
+  closedPage: number
+  totalOpenPages: number
+  totalClosedPages: number
+  currentGender: Gender
 }
 
 export default function TicketsAdminClient({
@@ -34,31 +36,44 @@ export default function TicketsAdminClient({
   totalClosedPages,
   currentGender,
 }: Props) {
-  const router       = useRouter()
+  const router = useRouter()
   const searchParams = useSearchParams()
 
   // local filter state
-  const [genderFilter, setGenderFilter] = useState(currentGender)
+  const [genderFilter, setGenderFilter] = useState<Gender>(currentGender)
 
   // apply gender filter (resets both pages to 1)
   const applyFilter = () => {
     const params = new URLSearchParams()
-    params.set('openPage',  '1')
-    params.set('closedPage','1')
-    if (genderFilter !== 'ALL') params.set('gender', genderFilter)
+    params.set('openPage', '1')
+    params.set('closedPage', '1')
+    if (genderFilter && genderFilter !== 'ALL') params.set('gender', genderFilter)
     router.push(`/dashboard/admin/tickets?${params.toString()}`)
   }
 
-  // page navigation handlers
+  // helper to build URLSearchParams from the current search params
+  const buildParamsFromCurrent = () => {
+    // use toString() because useSearchParams returns a ReadonlyURLSearchParams
+    return new URLSearchParams(searchParams?.toString() ?? '')
+  }
+
+  // page navigation handlers (with bounds checking)
   const goToOpenPage = (p: number) => {
-    const params = new URLSearchParams(searchParams as any)
-    params.set('openPage', String(p))
+    const page = Math.max(1, Math.min(p, totalOpenPages || Infinity))
+    const params = buildParamsFromCurrent()
+    params.set('openPage', String(page))
     router.push(`/dashboard/admin/tickets?${params.toString()}`)
   }
+
   const goToClosedPage = (p: number) => {
-    const params = new URLSearchParams(searchParams as any)
-    params.set('closedPage', String(p))
+    const page = Math.max(1, Math.min(p, totalClosedPages || Infinity))
+    const params = buildParamsFromCurrent()
+    params.set('closedPage', String(page))
     router.push(`/dashboard/admin/tickets?${params.toString()}`)
+  }
+
+  const onGenderChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    setGenderFilter(e.target.value as Gender)
   }
 
   return (
@@ -66,11 +81,7 @@ export default function TicketsAdminClient({
       {/* Filter */}
       <div className="flex items-center space-x-4">
         <label className="font-medium text-gray-900">Gender Filter:</label>
-        <select
-          value={genderFilter}
-          onChange={e => setGenderFilter(e.target.value as any)}
-          className="input w-40"
-        >
+        <select value={genderFilter} onChange={onGenderChange} className="input w-40" aria-label="Gender filter">
           <option value="ALL">All</option>
           <option value="MALE">Male</option>
           <option value="FEMALE">Female</option>
@@ -80,7 +91,7 @@ export default function TicketsAdminClient({
         </button>
       </div>
 
-      {/* Two‑column tables */}
+      {/* Two-column tables */}
       <div className="grid grid-cols-2 gap-6">
         {/* OPEN */}
         <div>
@@ -96,17 +107,14 @@ export default function TicketsAdminClient({
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {openTickets.map(t => (
+                {openTickets.map((t) => (
                   <tr key={t.id}>
                     <td className="px-4 py-2 text-sm text-green-600">{t.student}</td>
                     <td className="px-4 py-2 text-sm text-gray-950">{t.subject}</td>
                     <td className="px-4 py-2 text-sm text-gray-700">{new Date(t.createdAt).toLocaleString()}</td>
                     <td className="px-4 py-2 text-right">
-                      <Link
-                        href={`/dashboard/admin/tickets/${t.id}`}
-                        className="text-indigo-600 hover:underline text-sm"
-                      >
-                        View & Reply
+                      <Link href={`/dashboard/admin/tickets/${t.id}`} className="text-indigo-600 hover:underline text-sm">
+                        View &amp; Reply
                       </Link>
                     </td>
                   </tr>
@@ -116,17 +124,15 @@ export default function TicketsAdminClient({
           </div>
           {/* Open pagination */}
           <div className="flex items-center space-x-2">
-            <button
-              onClick={() => goToOpenPage(openPage - 1)}
-              disabled={openPage === 1}
-              className="btn-secondary text-sm"
-            >
+            <button onClick={() => goToOpenPage(openPage - 1)} disabled={openPage <= 1} className="btn-secondary text-sm">
               ← Prev
             </button>
-            <span>Page {openPage}/{totalOpenPages}</span>
+            <span>
+              Page {openPage}/{totalOpenPages}
+            </span>
             <button
               onClick={() => goToOpenPage(openPage + 1)}
-              disabled={openPage === totalOpenPages}
+              disabled={openPage >= totalOpenPages}
               className="btn-secondary text-sm"
             >
               Next →
@@ -148,16 +154,13 @@ export default function TicketsAdminClient({
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {closedTickets.map(t => (
+                {closedTickets.map((t) => (
                   <tr key={t.id}>
                     <td className="px-4 py-2 text-sm text-green-600">{t.student}</td>
                     <td className="px-4 py-2 text-sm text-pink-700">{t.subject}</td>
                     <td className="px-4 py-2 text-sm text-gray-700">{new Date(t.createdAt).toLocaleString()}</td>
                     <td className="px-4 py-2 text-right">
-                      <Link
-                        href={`/dashboard/admin/tickets/${t.id}`}
-                        className="text-indigo-600 hover:underline text-sm"
-                      >
+                      <Link href={`/dashboard/admin/tickets/${t.id}`} className="text-indigo-600 hover:underline text-sm">
                         View
                       </Link>
                     </td>
@@ -168,17 +171,15 @@ export default function TicketsAdminClient({
           </div>
           {/* Closed pagination */}
           <div className="flex items-center space-x-2">
-            <button
-              onClick={() => goToClosedPage(closedPage - 1)}
-              disabled={closedPage === 1}
-              className="btn-secondary text-sm"
-            >
+            <button onClick={() => goToClosedPage(closedPage - 1)} disabled={closedPage <= 1} className="btn-secondary text-sm">
               ← Prev
             </button>
-            <span>Page {closedPage}/{totalClosedPages}</span>
+            <span>
+              Page {closedPage}/{totalClosedPages}
+            </span>
             <button
               onClick={() => goToClosedPage(closedPage + 1)}
-              disabled={closedPage === totalClosedPages}
+              disabled={closedPage >= totalClosedPages}
               className="btn-secondary text-sm"
             >
               Next →
