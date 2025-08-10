@@ -7,19 +7,26 @@ import { IncomingForm, type Fields, type Files, type File } from 'formidable';
 import path from 'path';
 import { withLogging } from '@/lib/withLogging';
 
-// Disable built-in body parsing so formidable can handle it
+// Allowed gender values
+type Gender = 'MALE' | 'FEMALE';
+
+
 export const config = {
   api: {
     bodyParser: false,
   },
 };
 
-// Extend Formidable's File type to include newFilename (used in v3)
 interface FileWithNewName extends File {
   newFilename?: string;
 }
 
-// Parse with formidable
+
+function isGender(value: string): value is Gender {
+  return value === 'MALE' || value === 'FEMALE';
+}
+
+
 function parseForm(req: NextApiRequest): Promise<{ fields: Fields; files: Files }> {
   return new Promise((resolve, reject) => {
     const form = new IncomingForm({
@@ -73,7 +80,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const email        = String(fields.email || '');
     const state        = String(fields.state || '');
     const lga          = String(fields.lga || '');
-    const gender       = String(fields.gender || '') as 'MALE' | 'FEMALE';
+    const genderField  = String(fields.gender || '').toUpperCase();
+    const gender: Gender | null = isGender(genderField) ? genderField : null;
     const sponsorName  = String(fields.sponsorName || '');
     const sponsorPhone = String(fields.sponsorPhone || '');
     const sessionYear  = String(fields.sessionYear || '');
@@ -93,7 +101,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         email,
         state,
         lga,
-        gender,
+        gender: gender ?? undefined,
         sponsorName,
         sponsorPhone,
         sessionYear,
