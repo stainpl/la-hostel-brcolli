@@ -1,4 +1,3 @@
-// src/components/forms/RoomRequestForm.tsx
 'use client'
 
 import { useState } from 'react'
@@ -26,6 +25,7 @@ export default function RoomRequestForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
     if (!roomId) {
       toast.error('Please pick a room')
       return
@@ -33,20 +33,22 @@ export default function RoomRequestForm({
 
     setLoading(true)
     try {
-      // 1) Tell your backend to lock in the room request
       const res = await axios.post<{ price: number }>(
         `/api/students/${studentId}/room-request`,
         { roomId }
       )
 
-      // 2) On success, redirect to payment with the correct amount
       const amount = res.data.price
-      router.push(
-  `/payment?amount=${amount}&roomId=${roomId}&studentId=${studentId}`
-)
-    } catch (err: any) {
-      console.error(err)
-      toast.error(err.response?.data?.message || 'Failed to request room')
+      router.push(`/payment?amount=${amount}&roomId=${roomId}&studentId=${studentId}`)
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        toast.error(err.response?.data?.message || 'Failed to request room')
+      } else if (err instanceof Error) {
+        toast.error(err.message)
+      } else {
+        toast.error('An unknown error occurred')
+      }
+    } finally {
       setLoading(false)
     }
   }
@@ -55,22 +57,22 @@ export default function RoomRequestForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <label className="block font-medium text-gray-400">Select a Room</label>
       <select
-  name="roomId"
-  value={roomId}
-  onChange={e => setRoomId(Number(e.target.value))}
-  className="input w-full text-gray-700"
-  disabled={loading}
-  required
->
-  <option value="" disabled className="text-gray-400">
-    -- pick one --
-  </option>
-  {options.map(r => (
-    <option key={r.id} value={r.id}>
-      {r.label} — ₦{r.price.toLocaleString()}
-    </option>
-  ))}
-</select>
+        name="roomId"
+        value={roomId}
+        onChange={(e) => setRoomId(Number(e.target.value))}
+        className="input w-full text-gray-700"
+        disabled={loading}
+        required
+      >
+        <option value="" disabled>
+          -- pick one --
+        </option>
+        {options.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.label} — ₦{r.price.toLocaleString()}
+          </option>
+        ))}
+      </select>
 
       <button
         type="submit"
