@@ -13,6 +13,9 @@ export const config = {
   api: { bodyParser: false },
 };
 
+// Allowed gender values
+type Gender = 'MALE' | 'FEMALE';
+
 function parseForm(req: NextApiRequest): Promise<{ fields: formidable.Fields; files: formidable.Files }> {
   const form = formidable({
     uploadDir: path.join(process.cwd(), 'public', 'uploads'),
@@ -39,17 +42,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
-    // Parse the form
     const { fields, files } = await parseForm(req);
 
-    // Extract fields
     const fullName = getField(fields, 'fullName');
     const regNo = getField(fields, 'regNo');
     const email = getField(fields, 'email');
     const phone = getField(fields, 'phone');
     const state = getField(fields, 'state');
     const lga = getField(fields, 'lga');
-    const gender = getField(fields, 'gender');
+    const genderField = getField(fields, 'gender').toUpperCase();
+    const gender: Gender | '' = genderField === 'MALE' || genderField === 'FEMALE' ? (genderField as Gender) : '';
     const sponsorName = getField(fields, 'sponsorName');
     const sponsorPhone = getField(fields, 'sponsorPhone');
     const sessionYear = getField(fields, 'sessionYear');
@@ -83,20 +85,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const profileFile = files.profilePhoto as File | File[] | undefined;
     if (profileFile) {
       const file = Array.isArray(profileFile) ? profileFile[0] : profileFile;
-      if (file && file.filepath) {
-        // Reject if file type is not JPEG or PNG
+      if (file?.filepath) {
         if (!['image/jpeg', 'image/png'].includes(file.mimetype || '')) {
           await fs.unlink(file.filepath).catch(() => {});
           return res.status(400).json({ message: 'Only JPEG or PNG images are allowed' });
         }
-
-        // Check dimensions (max 4000 x 4000 px)
         const metadata = await sharp(file.filepath).metadata();
         if ((metadata.width ?? 0) > 4000 || (metadata.height ?? 0) > 4000) {
           await fs.unlink(file.filepath).catch(() => {});
           return res.status(400).json({ message: 'Image dimensions exceed 4000×4000 pixels' });
         }
-
         const fileName = `${Date.now()}_${file.originalFilename}`;
         const destPath = path.join(process.cwd(), 'public', 'uploads', fileName);
         await fs.rename(file.filepath, destPath);
@@ -114,7 +112,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         email,
         state,
         lga,
-        gender: gender as any,
+        gender: gender || null,
         sponsorName,
         sponsorPhone,
         sessionYear,
