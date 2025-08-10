@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import StudentDashboardWrapper from './StudentDashboardWrapper'
 import { Bug } from 'lucide-react'
-import Image from 'next/image' // <-- fixed: closing quote
+import Image from 'next/image' 
 
 export default async function StudentPage() {
   // 1) Protect route
