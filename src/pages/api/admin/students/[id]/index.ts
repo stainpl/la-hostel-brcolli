@@ -7,14 +7,19 @@ import { IncomingForm, type Fields, type Files, type File } from 'formidable';
 import path from 'path';
 import { withLogging } from '@/lib/withLogging';
 
-// 1) Disable built-in body parsing so formidable can handle it
+// Disable built-in body parsing so formidable can handle it
 export const config = {
   api: {
     bodyParser: false,
   },
 };
 
-// 2) Helper to parse with formidable
+// Extend Formidable's File type to include newFilename (used in v3)
+interface FileWithNewName extends File {
+  newFilename?: string;
+}
+
+// Parse with formidable
 function parseForm(req: NextApiRequest): Promise<{ fields: Fields; files: Files }> {
   return new Promise((resolve, reject) => {
     const form = new IncomingForm({
@@ -30,16 +35,15 @@ function parseForm(req: NextApiRequest): Promise<{ fields: Fields; files: Files 
   });
 }
 
-// 3) Helper to extract uploaded file path
+// Extract uploaded file path
 function getUploadedFilePath(fileInput?: File | File[]): string | undefined {
   if (!fileInput) return undefined;
-  const file = Array.isArray(fileInput) ? fileInput[0] : fileInput;
-  // formidable v3 uses file.newFilename
-  const filename = (file as any).newFilename || path.basename(file.filepath);
+  const file = Array.isArray(fileInput) ? fileInput[0] : (fileInput as FileWithNewName);
+  const filename = file.newFilename || path.basename(file.filepath);
   return `/uploads/${filename}`;
 }
 
-// 4) API handler
+// API handler
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'PATCH') {
     res.setHeader('Allow', ['PATCH']);
