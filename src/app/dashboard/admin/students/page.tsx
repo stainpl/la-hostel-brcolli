@@ -5,9 +5,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import StudentsAdminClient from './StudentAdminClient'
+import StudentsAdminClient from './StudentsAdminClient'
 
-// 1) “raw” type matching exactly what Prisma returns
 type RawStudent = {
   id: number
   fullName: string
@@ -17,49 +16,45 @@ type RawStudent = {
   sessionYear: string
 }
 
-// 2) The exact shape StudentsAdminClient expects
 export type StudentAdmin = {
   id: number
   fullName: string
   email: string
-  room: string               // e.g. "A-101" or "—"
+  room: string
   gender: 'MALE' | 'FEMALE'
-  sessionYear: number        // parsed from string
+  sessionYear: number
 }
 
-export default async function AdminStudentsPage({
-  searchParams,
-}: {
+interface AdminStudentsPageProps {
   searchParams: Record<string, string | undefined>
-}) {
-  // Next.js requires you to await searchParams if you use them
-  const params = (await searchParams) as Record<string, string | undefined>
+}
 
+export default async function AdminStudentsPage({ searchParams }: AdminStudentsPageProps) {
   // 1) Auth guard
   const session = await getServerSession(authOptions)
-  if (!session?.user?.role || session.user.role !== 'admin') {
+  if (session?.user?.role !== 'admin') {
     redirect('/auth/login')
   }
 
-  // 2) Read filters & pagination
-  const pageParam = params.page || '1'
-  const gender    = params.gender?.toUpperCase()
-  const yearParam = params.year || ''
-  const page      = parseInt(pageParam, 10) || 1
-  const take      = 10
-  const skip      = (page - 1) * take
+  // 2) Filters & pagination
+  const pageParam = searchParams.page ?? '1'
+  const genderParam = searchParams.gender?.toUpperCase()
+  const yearParam = searchParams.year ?? ''
+  const page = parseInt(pageParam, 10) || 1
+  const take = 10
+  const skip = (page - 1) * take
 
-  // 3) Build Prisma where clause
+  // 3) Prisma where clause
   const where: Record<string, any> = {}
-  if (gender === 'MALE' || gender === 'FEMALE') {
-    where.gender = gender
+  if (genderParam === 'MALE' || genderParam === 'FEMALE') {
+    where.gender = genderParam
   }
   if (/^\d{4}$/.test(yearParam)) {
-    where.sessionYear = yearParam  // Prisma will compare string
+    where.sessionYear = yearParam
   }
 
-  // 4) Fetch raw rows + count
-  const [rawRows, total]: [RawStudent[], number] = await prisma.$transaction([
+  // 4) Fetch
+  const [rawRows, total] = await prisma.$transaction([
     prisma.student.findMany({
       where,
       orderBy: { updatedAt: 'desc' },
@@ -75,11 +70,11 @@ export default async function AdminStudentsPage({
       },
     }),
     prisma.student.count({ where }),
-  ])
+  ]) as [RawStudent[], number]
 
   const totalPages = Math.ceil(total / take)
 
-  // 5) Map into the shape your client component expects
+  // 5) Map to client shape
   const students: StudentAdmin[] = rawRows.map((s) => ({
     id: s.id,
     fullName: s.fullName,
@@ -106,7 +101,9 @@ export default async function AdminStudentsPage({
           students={students}
           page={page}
           totalPages={totalPages}
-          currentGender={(gender as 'MALE' | 'FEMALE') || 'ALL'}
+          currentGender={
+            genderParam === 'MALE' || genderParam === 'FEMALE' ? genderParam : 'ALL'
+          }
           currentYear={yearParam}
         />
       </main>
