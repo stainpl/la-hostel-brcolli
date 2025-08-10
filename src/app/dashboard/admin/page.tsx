@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
-import Select from 'react-select'
+import Select, { GroupBase, StylesConfig } from 'react-select'
 import autoTable from 'jspdf-autotable'
 import jsPDF from 'jspdf'
 import { Card } from '@/components/ui/Card'
@@ -43,6 +43,14 @@ export default function AdminDashboard() {
   const [exportData, setExportData] = useState<Student[]>([])
   const tableRef = useRef<HTMLTableElement | null>(null)
 
+  // Styles for react-select (typed)
+  const selectStyles: StylesConfig<Option, true, GroupBase<Option>> = {
+    placeholder: (base) => ({ ...base, color: '#16A34A' }),
+    singleValue: (base) => ({ ...base, color: '#16A34A' }),
+    multiValueLabel: (base) => ({ ...base, color: '#16A34A' }),
+    input: (base) => ({ ...base, color: '#16A34A' }),
+  }
+
   // Fetch available years and genders
   useEffect(() => {
     let mounted = true
@@ -54,11 +62,10 @@ export default function AdminDashboard() {
           setYears(data.sessions as string[])
         }
       })
-      .catch((err) => {
-        // optional: console.warn('Failed to fetch sessions', err)
+      .catch(() => {
+        // optional: console.warn('Failed to fetch sessions')
       })
 
-    // Initialize gender options
     setGenders([
       { value: 'MALE', label: 'Male' },
       { value: 'FEMALE', label: 'Female' },
@@ -116,9 +123,8 @@ export default function AdminDashboard() {
       setSessionInput('')
       router.refresh()
     } catch (err: unknown) {
-      // narrow the unknown to extract message safely
       if (axios.isAxiosError(err)) {
-        setSessionMsg((err.response?.data as any)?.message ?? 'Failed to start session.')
+        setSessionMsg((err.response?.data as { message?: string })?.message ?? 'Failed to start session.')
       } else if (err instanceof Error) {
         setSessionMsg(err.message)
       } else {
@@ -132,31 +138,25 @@ export default function AdminDashboard() {
   // Export to PDF
   const downloadPdf = async () => {
     try {
-      // Build query params same as the modal fetch (allows multiple gender params)
       const params = new URLSearchParams()
       selectedGenders.forEach((g) => params.append('gender', g.value))
       if (selectedYear) params.set('year', selectedYear)
       if (status !== 'all') params.set('paid', status)
 
-      // Fetch data on demand
       const res = await axios.get(`/api/admin/students?${params.toString()}`)
       const students = Array.isArray(res.data?.students) ? (res.data.students as Student[]) : []
 
-      // Create PDF
       const pdf = new jsPDF('p', 'mm', 'a4')
       const pageWidth = pdf.internal.pageSize.getWidth()
 
-      // Heading
       const heading = `Student List – Session ${selectedYear || 'All Years'}`
       pdf.setFont('helvetica', 'bold')
       pdf.setFontSize(16)
       pdf.text(heading, pageWidth / 2, 15, { align: 'center' })
 
-      // line
       pdf.setLineWidth(0.5)
       pdf.line(14, 18, pageWidth - 14, 18)
 
-      // table
       const head = [['Name', 'Email', 'Gender', 'Year', 'Paid']]
       const body = students.map((s) => [
         s.fullName ?? '',
@@ -178,12 +178,12 @@ export default function AdminDashboard() {
       pdf.save(`students_${selectedYear || 'all'}_${Date.now()}.pdf`)
     } catch (err: unknown) {
       console.error('Failed to build PDF', err)
-      // optional: show toast/toastr
     }
   }
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <Link href="/dashboard/admin/rooms">
           <Card>
@@ -227,7 +227,7 @@ export default function AdminDashboard() {
           </Card>
         </Link>
 
-        {/* Export Data Card */}
+        {/* Export Data */}
         <div onClick={() => setShowExport(true)} className="cursor-pointer">
           <Card className="hover:border-blue-600 hover:bg-blue-50">
             <h2 className="text-xl font-semibold mb-2 text-blue-600">Export Data</h2>
@@ -235,7 +235,7 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Start Fresh Session Card */}
+        {/* Start Session */}
         <div onClick={() => setSessionModalOpen(true)} className="cursor-pointer">
           <Card className="hover:border-red-600 hover:bg-red-50">
             <h2 className="text-xl font-semibold mb-2 text-red-600">Start Fresh Session</h2>
@@ -244,6 +244,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Chart */}
       <div className="sm:col-span-2 lg:col-span-4">
         <hr className="my-10" />
         <Card>
@@ -252,12 +253,14 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Session Feedback Message */}
+      {/* Feedback */}
       {sessionMsg && (
-        <div className="mt-6 bg-green-100 text-green-800 p-3 rounded max-w-4xl mx-auto">{sessionMsg}</div>
+        <div className="mt-6 bg-green-100 text-green-800 p-3 rounded max-w-4xl mx-auto">
+          {sessionMsg}
+        </div>
       )}
 
-      {/* Start Session Modal */}
+      {/* Session Modal */}
       {sessionModalOpen && (
         <ConfirmModal
           isOpen={sessionModalOpen}
@@ -288,7 +291,7 @@ export default function AdminDashboard() {
         />
       )}
 
-      {/* Export Data Modal */}
+      {/* Export Modal */}
       {showExport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl space-y-4">
@@ -297,20 +300,15 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-800">Gender</label>
-                <Select<Option, true>
+                <Select<Option, true, GroupBase<Option>>
                   isMulti
                   options={genders}
                   value={selectedGenders}
-                  onChange={(v) => setSelectedGenders((v as Option[]) || [])}
+                  onChange={(v) => setSelectedGenders(v || [])}
                   placeholder="Filter by gender..."
                   className="react-select-container"
                   classNamePrefix="react-select"
-                  styles={{
-                    placeholder: (base: any) => ({ ...base, color: '#16A34A' }),
-                    singleValue: (base: any) => ({ ...base, color: '#16A34A' }),
-                    multiValueLabel: (base: any) => ({ ...base, color: '#16A34A' }),
-                    input: (base: any) => ({ ...base, color: '#16A34A' }),
-                  }}
+                  styles={selectStyles}
                 />
               </div>
 
