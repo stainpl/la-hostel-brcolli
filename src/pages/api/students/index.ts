@@ -59,6 +59,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (!fullName || !regNo || !email || !password || !confirmPassword) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: 'Invalid email address' });
+    }
     if (password !== confirmPassword) {
       return res.status(400).json({ message: 'Passwords do not match' });
     }
@@ -80,6 +83,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (profileFile) {
       const file = Array.isArray(profileFile) ? profileFile[0] : profileFile;
       if (file && file.filepath) {
+        // Check file type
+        if (!['image/jpeg', 'image/png'].includes(file.mimetype || '')) {
+          return res.status(400).json({ message: 'Only JPEG or PNG images are allowed' });
+        }
         const fileName = `${Date.now()}_${file.originalFilename}`;
         const destPath = path.join(process.cwd(), 'public', 'uploads', fileName);
         await fs.rename(file.filepath, destPath);
