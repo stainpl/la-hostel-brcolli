@@ -1,23 +1,17 @@
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from 'next'
 import { logEvent } from '@/lib/logger'
 
-export function withLogging(
-  handler: NextApiHandler,
-  context: string
-): NextApiHandler {
-  return async function (req: NextApiRequest, res: NextApiResponse) {
+export const withLogging = (handler: NextApiHandler, context: string): NextApiHandler =>
+  async (req, res) => {
     const start = Date.now()
     await logEvent('DEBUG', `→ ${context} called [${req.method}]`, context)
-
     try {
       await handler(req, res)
       await logEvent('INFO', `✔ ${context} succeeded [${req.method}]`, context)
     } catch (err: any) {
       await logEvent('ERROR', `✖ ${context} error: ${err.message}`, context)
-      throw err  
+      throw err
     } finally {
-      const ms = Date.now() - start
-      await logEvent('DEBUG', `← ${context} done in ${ms}ms`, context)
+      await logEvent('DEBUG', `← ${context} done in ${Date.now() - start}ms`, context)
     }
   }
-}
