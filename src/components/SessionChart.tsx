@@ -1,29 +1,26 @@
-
 'use client'
 
 import useSWR from 'swr'
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-  LabelList
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Cell, LabelList
 } from 'recharts'
 import { motion } from 'framer-motion'
 
 type Stats = { gender: string; total: number; paid: number }
 
-// Refined color palette for accessibility and consistency
 const COLORS = {
-  total: ['#2563eb', '#1e40af', '#3b82f6'], // deep blues
-  paid: ['#059669', '#15803d', '#10b981']   // rich greens
+  total: ['#2563eb', '#1e40af', '#3b82f6'],
+  paid: ['#059669', '#15803d', '#10b981'],
+  unpaid: '#9ca3af' // Matches bg-gray-400
 }
 
-// Polished legend with soft gradient background
+const fetcher = async (url: string) => {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Failed to fetch ${url}`)
+  return res.json()
+}
+
 const CustomLegend = () => (
   <div className="flex flex-wrap justify-center gap-4 mb-8">
     {[
@@ -33,9 +30,7 @@ const CustomLegend = () => (
     ].map(({ label, color, glow }) => (
       <div
         key={label}
-        className={
-          `flex items-center space-x-2 px-3 py-1.5 rounded-full border border-gray-200 bg-gradient-to-br from-gray-50 to-white ${glow}`
-        }
+        className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border border-gray-200 bg-gradient-to-br from-gray-50 to-white ${glow}`}
       >
         <span className={`w-4 h-4 rounded-full ${color}`}></span>
         <span className="text-sm font-medium text-gray-700">{label}</span>
@@ -44,10 +39,10 @@ const CustomLegend = () => (
   </div>
 )
 
-// Sleek tooltip with smoother typography
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
   const { total, paid } = payload[0].payload
+  if (total <= 0) return null // prevent NaN %
   const unpaid = total - paid
   const paidPct = ((paid / total) * 100).toFixed(0)
   const unpaidPct = ((unpaid / total) * 100).toFixed(0)
@@ -73,7 +68,8 @@ const calculateBarSize = (max: number, min: number) => {
 }
 
 export default function SessionChart() {
-  const { data, error } = useSWR<Stats[]>('/api/admin/session-stats', (url : string) => fetch(url).then(r => r.json()))
+  const { data, error } = useSWR<Stats[]>('/api/admin/session-stats', fetcher)
+
   if (error) return <p className="text-red-600">Error loading stats</p>
   if (!data) return <p className="text-gray-500">Loading sessions...</p>
 
@@ -85,7 +81,9 @@ export default function SessionChart() {
   const chartData = data.map(item => ({
     ...item,
     unpaid: item.total - item.paid,
-    paidPct: item.paid / item.total > 0.05 ? `${Math.round((item.paid / item.total) * 100)}%` : ''
+    paidPct: item.paid > 0 && item.paid / item.total > 0.05
+      ? `${Math.round((item.paid / item.total) * 100)}%`
+      : ''
   }))
 
   return (
@@ -129,16 +127,18 @@ export default function SessionChart() {
 
             <Bar dataKey="total" stackId="a" radius={[0, 6, 6, 0]}>
               {chartData.map((_, i) => (
-                <Cell key={i} fill={COLORS.total[i % COLORS.total.length]} />
+                <Cell key={`total-${i}`} fill={COLORS.total[i % COLORS.total.length]} />
               ))}
             </Bar>
-            <Bar dataKey="paid" stackId="a" radius={[6, 0, 0, 6]}>  
+
+            <Bar dataKey="paid" stackId="a" radius={[6, 0, 0, 6]}>
               {chartData.map((_, i) => (
-                <Cell key={i} fill={COLORS.paid[i % COLORS.paid.length]} />
+                <Cell key={`paid-${i}`} fill={COLORS.paid[i % COLORS.paid.length]} />
               ))}
               <LabelList dataKey="paidPct" position="right" style={{ fontSize: 12, fill: '#374151' }} />
             </Bar>
-            <Bar dataKey="unpaid" stackId="a" fill="#f3f4f6" animationDuration={0} />
+
+            <Bar dataKey="unpaid" stackId="a" fill={COLORS.unpaid} animationDuration={0} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -151,4 +151,3 @@ export default function SessionChart() {
     </motion.div>
   )
 }
-
