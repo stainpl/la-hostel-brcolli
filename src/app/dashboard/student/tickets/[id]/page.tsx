@@ -6,6 +6,7 @@ import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import ReplyForm from '@/components/forms/TicketReplyForm'
+import Image from 'next/image
 
 interface TicketReply {
   id: number
@@ -67,10 +68,12 @@ export default async function TicketThreadPage({ params }: Props) {
           <h2 className="text-2xl font-semibold text-gray-900">{ticket.subject}</h2>
           <p className="text-gray-800 whitespace-pre-wrap">{ticket.message}</p>
           {ticket.imageUrl && (
-            <img
+            <Image
               src={ticket.imageUrl}
               alt="Ticket attachment"
               className="max-w-full rounded"
+              width={48}
+              height={48}
             />
           )}
         </div>
