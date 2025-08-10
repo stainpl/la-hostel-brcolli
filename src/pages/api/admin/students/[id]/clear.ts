@@ -25,9 +25,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       data: { room: { disconnect: true } },
     })
     return res.status(200).json({ success: true })
-  } catch (err: any) {
-    console.error('[/api/admin/students/[id]/clear]', err)
-    return res.status(500).json({ message: 'Failed to clear room' })
+  } catch (err: unknown) {
+    console.error('[/api/admin/students/[id]/clear]', err);
+    return res.status(500).json({ message: 'Failed to clear room' });
   }
 }
 
