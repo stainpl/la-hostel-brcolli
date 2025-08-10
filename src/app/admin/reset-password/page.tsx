@@ -3,18 +3,18 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import axios from 'axios'
-import  Input  from "@/components/ui/Input"
+import Input from "@/components/ui/Input"
 
 export default function ResetPasswordPage() {
-  const router       = useRouter()
-  const params       = useSearchParams()
-  const token        = params?.get('token') || ''
-  const [valid, setValid]     = useState<boolean|null>(null)
-  const [password, setPassword]   = useState('')
-  const [confirm, setConfirm]     = useState('')
-  const [error, setError]         = useState<string|null>(null)
-  const [success, setSuccess]     = useState(false)
-  const [loading, setLoading]     = useState(false)
+  const router = useRouter()
+  const params = useSearchParams()
+  const token = params?.get('token') || ''
+  const [valid, setValid] = useState<boolean | null>(null)
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   // 1) Validate token on mount
   useEffect(() => {
@@ -22,13 +22,25 @@ export default function ResetPasswordPage() {
       setValid(false)
       return
     }
-    axios.get(`/api/admin/admins/reset-password?token=${token}`)
-      .then(() => setValid(true))
-      .catch(() => setValid(false))
+
+    const validate = async () => {
+      try {
+        await axios.get(`/api/admin/admins/reset-password?token=${token}`)
+        setValid(true)
+      } catch (err: unknown) {
+        if (axios.isAxiosError(err)) {
+          setValid(false)
+        } else {
+          setValid(false)
+        }
+      }
+    }
+
+    validate()
   }, [token])
 
   // 2) Handle form submit
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
     if (password.length < 8) {
@@ -44,8 +56,14 @@ export default function ResetPasswordPage() {
       await axios.post('/api/admin/admins/reset-password', { token, password })
       setSuccess(true)
       setTimeout(() => router.push('/'), 2000)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Reset failed.')
+    } catch (err: unknown) {
+      let message = 'Reset failed.'
+      if (axios.isAxiosError(err)) {
+        message = err.response?.data?.message ?? err.message ?? message
+      } else if (err instanceof Error) {
+        message = err.message
+      }
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -86,28 +104,28 @@ export default function ResetPasswordPage() {
           <>
             {error && <p className="mb-2 text-red-500">{error}</p>}
             <label className="block mb-2">
-  <span className="text-sm font-medium text-gray-500">New Password</span>
-  <Input
-    type="password"
-    value={password}
-    onChange={e => setPassword(e.target.value)}
-    required
-    placeholder="••••••••"
-    className="w-full rounded-lg border px-3 py-2 text-gray-800"
-  />
-</label>
+              <span className="text-sm font-medium text-gray-500">New Password</span>
+              <Input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                className="w-full rounded-lg border px-3 py-2 text-gray-800"
+              />
+            </label>
 
-<label className="block mb-4">
-  <span className="text-sm font-medium text-gray-500">Confirm Password</span>
-  <Input
-    type="password"
-    value={confirm}
-    onChange={e => setConfirm(e.target.value)}
-    required
-    placeholder="••••••••"
-    className="w-full rounded-lg border px-3 py-2 text-gray-800"
-  />
-</label>
+            <label className="block mb-4">
+              <span className="text-sm font-medium text-gray-500">Confirm Password</span>
+              <Input
+                type="password"
+                value={confirm}
+                onChange={e => setConfirm(e.target.value)}
+                required
+                placeholder="••••••••"
+                className="w-full rounded-lg border px-3 py-2 text-gray-800"
+              />
+            </label>
             <button
               type="submit"
               className="btn-primary w-full"
