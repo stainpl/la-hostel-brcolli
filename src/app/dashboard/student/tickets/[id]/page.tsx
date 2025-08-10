@@ -6,7 +6,7 @@ import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import ReplyForm from '@/components/forms/TicketReplyForm'
-import Image from 'next/image
+import Image from 'next/image'
 
 interface TicketReply {
   id: number
