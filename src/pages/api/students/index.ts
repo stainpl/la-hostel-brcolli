@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import formidable, { File } from 'formidable';
 import fs from 'fs/promises';
 import path from 'path';
+import sharp from 'sharp';
 import { withLogging } from '@/lib/withLogging';
 
 // Disable Next.js’s default JSON body parser for file uploads
@@ -77,16 +78,25 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(409).json({ message: 'Email or RegNo already registered' });
     }
 
-    // Handle file upload
+    // Handle optional profile photo
     let photoUrl: string | null = null;
     const profileFile = files.profilePhoto as File | File[] | undefined;
     if (profileFile) {
       const file = Array.isArray(profileFile) ? profileFile[0] : profileFile;
       if (file && file.filepath) {
-        // Check file type
+        // Reject if file type is not JPEG or PNG
         if (!['image/jpeg', 'image/png'].includes(file.mimetype || '')) {
+          await fs.unlink(file.filepath).catch(() => {});
           return res.status(400).json({ message: 'Only JPEG or PNG images are allowed' });
         }
+
+        // Check dimensions (max 4000 x 4000 px)
+        const metadata = await sharp(file.filepath).metadata();
+        if ((metadata.width ?? 0) > 4000 || (metadata.height ?? 0) > 4000) {
+          await fs.unlink(file.filepath).catch(() => {});
+          return res.status(400).json({ message: 'Image dimensions exceed 4000×4000 pixels' });
+        }
+
         const fileName = `${Date.now()}_${file.originalFilename}`;
         const destPath = path.join(process.cwd(), 'public', 'uploads', fileName);
         await fs.rename(file.filepath, destPath);
