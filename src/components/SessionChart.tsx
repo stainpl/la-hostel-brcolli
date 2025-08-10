@@ -10,21 +10,19 @@ import { motion } from 'framer-motion'
 type Stats = { gender: string; total: number; paid: number }
 
 const COLORS = {
-  total: ['#2563eb', '#1e40af', '#3b82f6'],
   paid: ['#059669', '#15803d', '#10b981'],
-  unpaid: '#9ca3af' // Matches bg-gray-400
+  unpaid: '#9ca3af'
 }
 
-const fetcher = async (url: string) => {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Failed to fetch ${url}`)
-  return res.json()
-}
+const fetcher = (url: string) =>
+  fetch(url).then(res => {
+    if (!res.ok) throw new Error(`Failed to fetch ${url}`)
+    return res.json()
+  })
 
 const CustomLegend = () => (
   <div className="flex flex-wrap justify-center gap-4 mb-8">
     {[
-      { label: 'Total Sessions', color: 'bg-blue-500', glow: 'shadow-[0_0_8px_rgba(59,130,246,0.6)]' },
       { label: 'Paid Sessions', color: 'bg-green-500', glow: 'shadow-[0_0_8px_rgba(16,185,129,0.6)]' },
       { label: 'Unpaid Sessions', color: 'bg-gray-400', glow: '' }
     ].map(({ label, color, glow }) => (
@@ -41,9 +39,7 @@ const CustomLegend = () => (
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
-  const { total, paid } = payload[0].payload
-  if (total <= 0) return null // prevent NaN %
-  const unpaid = total - paid
+  const { total, paid, unpaid } = payload[0].payload
   const paidPct = ((paid / total) * 100).toFixed(0)
   const unpaidPct = ((unpaid / total) * 100).toFixed(0)
 
@@ -51,9 +47,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
       <p className="text-sm font-semibold text-gray-800 mb-2">{label}</p>
       <div className="space-y-1 text-sm">
-        <p className="text-blue-600">Total: <span className="font-medium">{total.toLocaleString()}</span></p>
-        <p className="text-green-600">Paid: <span className="font-medium">{paid.toLocaleString()} ({paidPct}%)</span></p>
-        <p className="text-gray-500">Unpaid: <span className="font-medium">{unpaid.toLocaleString()} ({unpaidPct}%)</span></p>
+        <p className="text-green-600">
+          Paid: <span className="font-medium">{paid.toLocaleString()} ({paidPct}%)</span>
+        </p>
+        <p className="text-gray-500">
+          Unpaid: <span className="font-medium">{unpaid.toLocaleString()} ({unpaidPct}%)</span>
+        </p>
+        <p className="text-blue-600">
+          Total: <span className="font-medium">{total.toLocaleString()}</span>
+        </p>
       </div>
     </div>
   )
@@ -125,12 +127,7 @@ export default function SessionChart() {
             />
             <Tooltip content={<CustomTooltip />} />
 
-            <Bar dataKey="total" stackId="a" radius={[0, 6, 6, 0]}>
-              {chartData.map((_, i) => (
-                <Cell key={`total-${i}`} fill={COLORS.total[i % COLORS.total.length]} />
-              ))}
-            </Bar>
-
+            {/* Paid Sessions */}
             <Bar dataKey="paid" stackId="a" radius={[6, 0, 0, 6]}>
               {chartData.map((_, i) => (
                 <Cell key={`paid-${i}`} fill={COLORS.paid[i % COLORS.paid.length]} />
@@ -138,7 +135,8 @@ export default function SessionChart() {
               <LabelList dataKey="paidPct" position="right" style={{ fontSize: 12, fill: '#374151' }} />
             </Bar>
 
-            <Bar dataKey="unpaid" stackId="a" fill={COLORS.unpaid} animationDuration={0} />
+            {/* Unpaid Sessions */}
+            <Bar dataKey="unpaid" stackId="a" fill={COLORS.unpaid} />
           </BarChart>
         </ResponsiveContainer>
       </div>
