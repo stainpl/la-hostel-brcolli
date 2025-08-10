@@ -53,9 +53,10 @@ import { withLogging }                  from '@/lib/withLogging'
         res.setHeader('Allow', ['GET', 'PATCH', 'DELETE'])
         return res.status(405).end(`Method ${req.method} Not Allowed`)
     }
-  } catch (error: any) {
-    console.error('[/api/admin/rooms/[id]] error:', error)
-    return res.status(500).json({ message: 'Internal server error' })
+  } catch (error: unknown) {
+   const message = error instanceof Error ? error.message : 'Unknown error';
+   console.error('[/api/admin/rooms/[id]] error:', message, error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 }
 
