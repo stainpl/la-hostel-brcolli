@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import StudentDashboardWrapper from './StudentDashboardWrapper'
 import { Bug } from 'lucide-react'
+import Image from 'next/image
 
 export default async function StudentPage() {
   // 1) Protect route
@@ -63,11 +64,14 @@ export default async function StudentPage() {
             <div className="mt-4 flex flex-col md:flex-row md:space-x-6">
               {/* Profile photo */}
               <div className="flex-shrink-0 mb-4 md:mb-0">
-                <img
-                  src={student.profilePhoto || '/avatar-placeholder.png'}
-                  alt="Profile"
-                  className="w-24 h-24 rounded-full object-cover"
-                />
+                <Image
+       src={student.profilePhoto ?? '/         avatar-placeholder.png'}
+         alt={`${student.fullName} profile`}
+         width={96} 
+         height={96}
+         className="rounded-full object-cover"
+ 
+         />
               </div>
               {/* Profile details grid */}
               <div className="flex-1 grid grid-cols-2 gap-y-2 text-white">
