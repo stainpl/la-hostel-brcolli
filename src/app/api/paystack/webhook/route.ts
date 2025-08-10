@@ -16,12 +16,21 @@ type PaystackEvent = {
 /**
  * Type guard for charge.success event with a reference string
  */
-function isChargeSuccessEvent(payload: unknown): payload is { event: 'charge.success'; data: { reference: string } } {
+function isChargeSuccessEvent(
+  payload: unknown
+): payload is { event: 'charge.success'; data: { reference: string } } {
   if (!isObject(payload)) return false
   if (typeof payload.event !== 'string') return false
   if (payload.event !== 'charge.success') return false
   if (!isObject(payload.data)) return false
   return typeof payload.data.reference === 'string'
+}
+
+
+function getEventName(payload: unknown): string | undefined {
+  if (!isObject(payload)) return undefined
+  const ev = payload['event']
+  return typeof ev === 'string' ? ev : undefined
 }
 
 export async function POST(request: Request) {
@@ -81,8 +90,9 @@ export async function POST(request: Request) {
     }
   } else {
     // Not a charge.success event or payload shape mismatch — ignore
+    const eventName = getEventName(eventPayload)
     console.log('ℹ️ Webhook received, ignored (not charge.success)', {
-      event: isObject(eventPayload) ? (eventPayload as any).event : typeof eventPayload,
+      event: eventName ?? typeof eventPayload,
     })
   }
 
