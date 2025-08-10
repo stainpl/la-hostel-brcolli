@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, ChangeEvent, FormEvent } from 'react'
+import { useState, useEffect, ChangeEvent, FormEvent } from 'react'
 import Modal from './Modal'
 import axios from 'axios'
 import { toast } from 'react-hot-toast'
@@ -46,7 +46,19 @@ export default function StudentEditModal({ student, onClose, onSave }: Props) {
   })
 
   const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string>(form.profilePhoto || '')
   const [loading, setLoading] = useState(false)
+
+  // Manage preview URL and cleanup
+  useEffect(() => {
+    if (!photoFile) {
+      setPreviewUrl(form.profilePhoto || '')
+      return
+    }
+    const objectUrl = URL.createObjectURL(photoFile)
+    setPreviewUrl(objectUrl)
+    return () => URL.revokeObjectURL(objectUrl)
+  }, [photoFile, form.profilePhoto])
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -69,9 +81,7 @@ export default function StudentEditModal({ student, onClose, onSave }: Props) {
     try {
       const data = new FormData()
       Object.entries(form).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          data.append(key, String(value))
-        }
+        data.append(key, String(value))
       })
       if (photoFile) {
         data.append('profilePhoto', photoFile)
@@ -85,7 +95,7 @@ export default function StudentEditModal({ student, onClose, onSave }: Props) {
 
       toast.success('Student updated!')
       onSave(res.data)
-      onClose()
+      handleClose()
     } catch (err) {
       if (axios.isAxiosError(err)) {
         toast.error(err.response?.data?.message || 'Update failed')
@@ -97,14 +107,18 @@ export default function StudentEditModal({ student, onClose, onSave }: Props) {
     }
   }
 
+  const handleClose = () => {
+    setPhotoFile(null)
+    onClose()
+  }
+
   return (
-    <Modal onClose={onClose}>
+    <Modal onClose={handleClose}>
       <h2 className="text-2xl font-bold text-gray-900 mb-4">
         Edit: {student.fullName}
       </h2>
 
       <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
-        {/* Text fields */}
         {[
           { label: 'Full Name', name: 'fullName', required: true },
           { label: 'Reg No', name: 'regNo', required: true },
@@ -116,11 +130,17 @@ export default function StudentEditModal({ student, onClose, onSave }: Props) {
           { label: 'Sponsor Phone', name: 'sponsorPhone', type: 'tel' },
         ].map((field) => (
           <div key={field.name}>
-            <label className="block text-sm font-semibold text-gray-700">
+            <label
+              htmlFor={field.name}
+              className="block text-sm font-semibold text-gray-700"
+            >
               {field.label}
             </label>
             <input
-              {...field}
+              id={field.name}
+              name={field.name}
+              type={field.type || 'text'}
+              required={field.required}
               value={(form as any)[field.name]}
               onChange={handleChange}
               className="input w-full border-gray-400 focus:border-gray-600 placeholder-gray-500"
@@ -128,12 +148,15 @@ export default function StudentEditModal({ student, onClose, onSave }: Props) {
           </div>
         ))}
 
-        {/* Gender */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700">
+          <label
+            htmlFor="gender"
+            className="block text-sm font-semibold text-gray-700"
+          >
             Gender
           </label>
           <select
+            id="gender"
             name="gender"
             value={form.gender}
             onChange={handleChange}
@@ -145,12 +168,15 @@ export default function StudentEditModal({ student, onClose, onSave }: Props) {
           </select>
         </div>
 
-        {/* Session Year */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700">
+          <label
+            htmlFor="sessionYear"
+            className="block text-sm font-semibold text-gray-700"
+          >
             Session Year
           </label>
           <input
+            id="sessionYear"
             name="sessionYear"
             type="number"
             value={form.sessionYear}
@@ -160,26 +186,25 @@ export default function StudentEditModal({ student, onClose, onSave }: Props) {
           />
         </div>
 
-        {/* Profile Photo */}
         <div className="col-span-2">
-          <label className="block text-sm mb-1 font-semibold text-gray-900">
+          <label
+            htmlFor="profilePhoto"
+            className="block text-sm mb-1 font-semibold text-gray-900"
+          >
             Profile Photo
           </label>
           <input
+            id="profilePhoto"
             name="profilePhoto"
             type="file"
             accept="image/*"
             onChange={handleFile}
             className="w-full"
           />
-          {(photoFile || form.profilePhoto) && (
+          {previewUrl && (
             <div className="mt-2 rounded overflow-hidden">
               <Image
-                src={
-                  photoFile
-                    ? URL.createObjectURL(photoFile)
-                    : form.profilePhoto || '/default-avatar.png'
-                }
+                src={previewUrl || '/default-avatar.png'}
                 alt="Profile Preview"
                 width={128}
                 height={128}
@@ -190,11 +215,10 @@ export default function StudentEditModal({ student, onClose, onSave }: Props) {
           )}
         </div>
 
-        {/* Buttons */}
         <div className="col-span-2 flex justify-end space-x-2 mt-4">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="btn-secondary px-4 py-2"
             disabled={loading}
           >
