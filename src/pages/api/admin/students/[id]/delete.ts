@@ -19,12 +19,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (isNaN(id)) return res.status(400).json({ message: 'Invalid ID' })
 
   try {
-    // Delete the student record (cascades tickets/payments if you set up those relations)
     await prisma.student.delete({ where: { id } })
     return res.status(200).json({ success: true })
-  } catch (err: any) {
-    console.error('[/api/admin/students/[id]/delete]', err)
-    return res.status(500).json({ message: 'Failed to delete student' })
+  } catch (err: unknown) {
+    console.error('[/api/admin/students/[id]/delete]', err);
+    return res.status(500).json({ message: 'Failed to delete student' });
   }
 }
 
