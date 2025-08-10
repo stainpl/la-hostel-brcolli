@@ -72,16 +72,16 @@ export default function AdminRoomsPage() {
       })
       toast.success(`Room ${blockVal}-${numberVal} created`)
       e.currentTarget.reset()
-    } catch (err: any) {
-      if (axios.isAxiosError(err) && err.response?.status === 409) {
-        toast.error(err.response.data.message)
-      } else {
-        console.error('Error creating room:', err)
-        toast.error('Unexpected error creating room')
-      }
-      setCreating(false)
-      return
-    }
+    } catch (err: unknown) {
+  if (axios.isAxiosError(err) && err.response?.status === 409) {
+    toast.error(err.response.data.message);
+  } else {
+    console.error('Error creating room:', err);
+    toast.error('Unexpected error creating room');
+  }
+  setCreating(false);
+  return;
+}
 
     // --- re-fetch after create ---
     try {
