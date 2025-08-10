@@ -106,8 +106,14 @@ export default function EditStudentForm({ initialData }: Props) {
 
       setSuccess('Student updated successfully!')
       setTimeout(() => router.push('/dashboard/admin/students'), 1000)
-    } catch (err: any) {
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
       setError(err.response?.data?.message || 'Failed to save changes.')
+      } else if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError('An unknown error occured.')
+      }
     } finally {
       setLoading(false)
     }
