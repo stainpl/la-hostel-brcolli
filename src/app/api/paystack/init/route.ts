@@ -1,11 +1,21 @@
 // src/app/api/paystack/init/route.ts
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions }      from '@/pages/api/auth/[...nextauth]'
-import { prisma }           from '@/lib/prisma'
+import { authOptions } from '@/pages/api/auth/[...nextauth]'
+import { prisma } from '@/lib/prisma'
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY!
-const CALLBACK_URL    = `${process.env.NEXT_PUBLIC_BASE_URL}/api/paystack/verify`
+const CALLBACK_URL = `${process.env.NEXT_PUBLIC_BASE_URL}/api/paystack/verify`
+
+type PaystackInitResponse = {
+  status: boolean
+  message?: string
+  data: {
+    authorization_url: string
+    access_code: string
+    reference: string
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -17,7 +27,7 @@ export async function POST(req: Request) {
     const studentId = Number(session.user.id)
 
     // 2) Parse & validate body
-    const { roomId } = await req.json() as { roomId?: number }
+    const { roomId } = (await req.json()) as { roomId?: number }
     if (!roomId || isNaN(roomId)) {
       return NextResponse.json({ error: 'Invalid roomId' }, { status: 400 })
     }
@@ -34,18 +44,18 @@ export async function POST(req: Request) {
     if (!student) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 })
     }
-    const nairaPrice = room!.price
+
+    const nairaPrice = room.price
     const koboAmount = nairaPrice * 100
 
     // 4) Create pending Payment record
     const reference = `hstl_${Date.now()}`
-    const amountKobo = room.price * 100
     await prisma.payment.create({
       data: {
         reference,
-        amount:      koboAmount,
-        method:      'init',
-        status:      'pending',
+        amount: koboAmount,
+        method: 'init',
+        status: 'pending',
         studentId,
         roomId,
         sessionYear: String(student.sessionYear),
@@ -60,8 +70,8 @@ export async function POST(req: Request) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        email:        student.email,
-        amount:       amountKobo,
+        email: student.email,
+        amount: koboAmount,
         reference,
         callback_url: CALLBACK_URL,
       }),
@@ -73,15 +83,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Failed to initialize payment' }, { status: 502 })
     }
 
-    const payload = await response.json()
+    const payload = (await response.json()) as PaystackInitResponse
+
     // 6) Return the Paystack authorization URL
     return NextResponse.json({
       authorization_url: payload.data.authorization_url,
-      access_code:       payload.data.access_code,
-      reference:         payload.data.reference,
+      access_code: payload.data.access_code,
+      reference: payload.data.reference,
     })
-  } catch (e: any) {
-    console.error('[api/paystack/init] error:', e)
+  } catch (e: unknown) {
+    // Narrow the unknown to show helpful logs while avoiding 'any'
+    if (e instanceof Error) {
+      console.error('[api/paystack/init] error:', e.message)
+    } else {
+      console.error('[api/paystack/init] unknown error:', e)
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
