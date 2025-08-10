@@ -1,144 +1,87 @@
-'use client'
+// src/app/api/paystack/init/route.ts
+import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions }      from '@/pages/api/auth/[...nextauth]'
+import { prisma }           from '@/lib/prisma'
 
-import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import axios from 'axios'
-import Input from "@/components/ui/Input"
+const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY!
+const CALLBACK_URL    = `${process.env.NEXT_PUBLIC_BASE_URL}/api/paystack/verify`
 
-export default function ResetPasswordPage() {
-  const router = useRouter()
-  const params = useSearchParams()
-  const token = params?.get('token') || ''
-  const [valid, setValid] = useState<boolean | null>(null)
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
-  const [loading, setLoading] = useState(false)
+export async function POST(req: Request) {
+  try {
+    // 1) Ensure student is logged in
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id || session.user.role !== 'student') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const studentId = Number(session.user.id)
 
-  // 1) Validate token on mount
-  useEffect(() => {
-    if (!token) {
-      setValid(false)
-      return
+    // 2) Parse & validate body
+    const { roomId } = await req.json() as { roomId?: number }
+    if (!roomId || isNaN(roomId)) {
+      return NextResponse.json({ error: 'Invalid roomId' }, { status: 400 })
     }
 
-    const validate = async () => {
-      try {
-        await axios.get(`/api/admin/admins/reset-password?token=${token}`)
-        setValid(true)
-      } catch (err: unknown) {
-        // Narrow the error to give a helpful message, but don't use `any`
-        if (axios.isAxiosError(err)) {
-          // optional: check err.response?.status === 404 or error message
-          setValid(false)
-        } else {
-          setValid(false)
-        }
-      }
+    // 3) Lookup room and student
+    const room = await prisma.room.findUnique({ where: { id: roomId } })
+    if (!room) {
+      return NextResponse.json({ error: 'Room not found' }, { status: 404 })
+    }
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      select: { email: true, sessionYear: true },
+    })
+    if (!student) {
+      return NextResponse.json({ error: 'Student not found' }, { status: 404 })
+    }
+    const nairaPrice = room!.price
+    const koboAmount = nairaPrice * 100
+
+    // 4) Create pending Payment record
+    const reference = `hstl_${Date.now()}`
+    const amountKobo = room.price * 100
+    await prisma.payment.create({
+      data: {
+        reference,
+        amount:      koboAmount,
+        method:      'init',
+        status:      'pending',
+        studentId,
+        roomId,
+        sessionYear: String(student.sessionYear),
+      },
+    })
+
+    // 5) Initialize Paystack transaction
+    const response = await fetch('https://api.paystack.co/transaction/initialize', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${PAYSTACK_SECRET}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email:        student.email,
+        amount:       amountKobo,
+        reference,
+        callback_url: CALLBACK_URL,
+      }),
+    })
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => null)
+      console.error('[Paystack Init Error]', err)
+      return NextResponse.json({ error: 'Failed to initialize payment' }, { status: 502 })
     }
 
-    validate()
-  }, [token])
-
-  // 2) Handle form submit
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setError(null)
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
-      return
-    }
-    if (password !== confirm) {
-      setError("Passwords don't match.")
-      return
-    }
-    setLoading(true)
-    try {
-      await axios.post('/api/admin/admins/reset-password', { token, password })
-      setSuccess(true)
-      setTimeout(() => router.push('/'), 2000)
-    } catch (err: unknown) {
-      // Properly narrow unknown to extract a message
-      let message = 'Reset failed.'
-      if (axios.isAxiosError(err)) {
-        message = err.response?.data?.message ?? err.message ?? message
-      } else if (err instanceof Error) {
-        message = err.message
-      }
-      setError(message)
-    } finally {
-      setLoading(false)
-    }
+    const payload = await response.json()
+    // 6) Return the Paystack authorization URL
+    return NextResponse.json({
+      authorization_url: payload.data.authorization_url,
+      access_code:       payload.data.access_code,
+      reference:         payload.data.reference,
+    })
+  } catch (e: any) {
+    console.error('[api/paystack/init] error:', e)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-
-  // 3) Render invalid page
-  if (valid === false) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="p-6 bg-white rounded shadow text-center">
-          <h2 className="text-xl font-semibold mb-4 text-red-500">Invalid or Expired Token</h2>
-          <p>This reset link is no longer valid.</p>
-        </div>
-      </div>
-    )
-  }
-
-  // 4) Success message
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="p-6 bg-white rounded shadow text-center">
-          <h2 className="text-xl font-semibold mb-4">Password Reset!</h2>
-          <p>You can now <a className="text-indigo-600 underline" href="/auth/login">log in</a> with your new password.</p>
-        </div>
-      </div>
-    )
-  }
-
-  // 5) Loading or form
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm bg-white p-6 rounded shadow">
-        <h2 className="text-xl font-semibold mb-4 text-green-500">Set a New Password</h2>
-        {valid === null ? (
-          <p>Validating link…</p>
-        ) : valid === true ? (
-          <>
-            {error && <p className="mb-2 text-red-500">{error}</p>}
-            <label className="block mb-2">
-              <span className="text-sm font-medium text-gray-500">New Password</span>
-              <Input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-                className="w-full rounded-lg border px-3 py-2 text-gray-800"
-              />
-            </label>
-
-            <label className="block mb-4">
-              <span className="text-sm font-medium text-gray-500">Confirm Password</span>
-              <Input
-                type="password"
-                value={confirm}
-                onChange={e => setConfirm(e.target.value)}
-                required
-                placeholder="••••••••"
-                className="w-full rounded-lg border px-3 py-2 text-gray-800"
-              />
-            </label>
-            <button
-              type="submit"
-              className="btn-primary w-full"
-              disabled={loading}
-            >
-              {loading ? 'Resetting…' : 'Reset Password'}
-            </button>
-          </>
-        ) : null}
-      </form>
-    </div>
-  )
 }
