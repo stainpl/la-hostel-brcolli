@@ -1,15 +1,13 @@
-// pages/reset-password.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Spinner from '@/components/ui/Spinner'
 import { toast } from 'react-hot-toast'
-import  Textarea  from '@/components/ui/Textarea'
 
 export default function ResetPasswordPage() {
-  const router = useRouter()               
-  const searchParams = useSearchParams()   
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const token = searchParams?.get('token') || ''
 
   const [newPassword, setNewPassword] = useState('')
@@ -20,7 +18,11 @@ export default function ResetPasswordPage() {
 
   // 1. Validate token on mount
   useEffect(() => {
-    if (!token) return
+    if (!token) {
+      setValidating(false)
+      setValidToken(false)
+      return
+    }
     fetch(`/api/auth/validate-reset?token=${token}`)
       .then(res => res.json())
       .then(({ valid }) => setValidToken(valid))
@@ -87,38 +89,38 @@ export default function ResetPasswordPage() {
         <h1 className="text-2xl font-bold text-left text-green-600">Reset Password</h1>
 
         <div>
-  <label htmlFor="new-password" className="block text-sm font-medium text-gray-700">
-    New Password
-  </label>
-  <Textarea
-    id="new-password"
-    value={newPassword}
-    onChange={e => setNewPassword(e.target.value)}
-    required
-    minLength={6}
-    disabled={loading}
-    placeholder="••••••••"
-    placeholderClassName="placeholder:font-bold placeholder-gray-600 placeholder-opacity-100"
-    className="w-full h-24 resize-y text-gray-800"
-  />
-</div>
+          <label htmlFor="new-password" className="block text-sm font-medium text-gray-700">
+            New Password
+          </label>
+          <input
+            type="password"
+            id="new-password"
+            value={newPassword}
+            onChange={e => setNewPassword(e.target.value)}
+            required
+            minLength={6}
+            disabled={loading}
+            placeholder="••••••••"
+            className="w-full mt-1 px-3 py-2 border rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
 
-<div>
-  <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
-    Confirm Password
-  </label>
-  <Textarea
-    id="confirm-password"
-    value={confirmPassword}
-    onChange={e => setConfirmPassword(e.target.value)}
-    required
-    minLength={6}
-    disabled={loading}
-    placeholder="••••••••"
-    placeholderClassName="placeholder:font-bold placeholder-gray-600 placeholder-opacity-100"
-    className="w-full h-24 resize-y text-gray-800"
-  />
-</div>
+        <div>
+          <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
+            Confirm Password
+          </label>
+          <input
+            type="password"
+            id="confirm-password"
+            value={confirmPassword}
+            onChange={e => setConfirmPassword(e.target.value)}
+            required
+            minLength={6}
+            disabled={loading}
+            placeholder="••••••••"
+            className="w-full mt-1 px-3 py-2 border rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
 
         <button
           type="submit"
