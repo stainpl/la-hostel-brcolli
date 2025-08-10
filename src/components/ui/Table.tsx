@@ -6,7 +6,6 @@ import { ReactNode } from 'react'
 export type Column<T> = {
   header: string
   accessor: keyof T
-  /** Custom cell renderer: receives the raw cell value and the full row */
   cell?: (value: any, row: T) => ReactNode
 }
 
@@ -35,7 +34,7 @@ export default function Table<T>({ data, columns }: TableProps<T>) {
           {data.map((row, i) => (
             <tr
               key={i}
-              className={i % 2 === 0 ? 'bg-blue' : 'bg-gray-50'}
+              className={i % 2 === 0 ? 'bg-blue-50' : 'bg-gray-50'}
             >
               {columns.map((col) => {
                 const value = row[col.accessor]
