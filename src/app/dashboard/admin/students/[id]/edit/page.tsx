@@ -6,15 +6,19 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import EditStudentForm from '@/components/forms/EditStudentForm'
 
-export default async function EditStudentPage(props: any) {
+interface EditStudentPageProps {
+  params: { id: string }
+}
+
+export default async function EditStudentPage({ params }: EditStudentPageProps) {
   const session = await getServerSession(authOptions)
   if (session?.user?.role !== 'admin') {
     redirect('/auth/login')
   }
-  
-  const { params } = await props
+
   const studentId = Number(params.id)
   const student = await prisma.student.findUnique({ where: { id: studentId } })
+
   if (!student) {
     redirect('/dashboard/admin/students')
   }
@@ -22,8 +26,12 @@ export default async function EditStudentPage(props: any) {
   return (
     <div>
       {/* … your header … */}
-      <EditStudentForm initialData={{ ...student, sessionYear: Number(student.sessionYear) }} />
-
+      <EditStudentForm
+        initialData={{
+          ...student,
+          sessionYear: Number(student.sessionYear),
+        }}
+      />
     </div>
   )
 }
