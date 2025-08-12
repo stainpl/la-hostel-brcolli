@@ -97,7 +97,7 @@ export default async function AdminStudentsPage({ searchParams }: AdminStudentsP
           </Link>
         </header>
 
-        <StudentsAdminClient
+        <StudentAdminClient
           students={students}
           page={page}
           totalPages={totalPages}
