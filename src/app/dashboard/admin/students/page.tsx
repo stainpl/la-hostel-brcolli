@@ -1,4 +1,3 @@
-// app/dashboard/admin/students/page.tsx
 import React from 'react'
 import Link from 'next/link'
 import { getServerSession } from 'next-auth'
