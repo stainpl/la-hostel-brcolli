@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import axios, { AxiosError } from 'axios'
+import axios from 'axios'
 import { useRouter } from 'next/navigation'
 import Textarea from '../../../../../components/ui/Textarea'
 
@@ -12,32 +12,46 @@ interface Props {
 export default function TicketReplyForm({ ticketId }: Props) {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // core submit logic (no event)
+  const submitReply = async () => {
     if (!message.trim()) {
-      return setError('Reply cannot be empty.')
+      setError('Reply cannot be empty.')
+      return
     }
-    setError('')
+
+    setError(null)
     setLoading(true)
+
     try {
       await axios.post(`/api/students/tickets/${ticketId}/reply`, { message })
       setMessage('')
       router.refresh()
     } catch (err) {
-      const axiosErr = err as AxiosError<{ message?: string }>
-      setError(axiosErr.response?.data?.message || 'Failed to send reply.')
+      // safe axios error handling
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.message ?? err.message ?? 'Failed to send reply.')
+      } else {
+        setError(String(err) || 'Failed to send reply.')
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  // form submit handler (typed)
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    await submitReply()
+  }
+
+  // keydown handler for textarea (typed) — calls submitReply directly
+  const handleKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSubmit(e as any)
+      await submitReply()
     }
   }
 
@@ -48,7 +62,7 @@ export default function TicketReplyForm({ ticketId }: Props) {
         value={message}
         onChange={e => {
           setMessage(e.target.value)
-          if (error) setError('')
+          if (error) setError(null)
         }}
         onKeyDown={handleKeyDown}
         placeholder="Type your reply here..."
