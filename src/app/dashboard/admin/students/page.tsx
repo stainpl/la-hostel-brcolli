@@ -6,15 +6,18 @@ import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import StudentAdminClient from './StudentAdminClient'
+import type { Prisma } from '@prisma/client'
 
-type RawStudent = {
-  id: number
-  fullName: string
-  email: string
-  room: { block: string; number: number } | null
-  gender: 'MALE' | 'FEMALE'
-  sessionYear: string
-}
+type RawStudent = Prisma.StudentGetPayload<{
+  select: {
+    id: true
+    fullName: true
+    email: true
+    room: { select: { block: true; number: true } }
+    gender: true
+    sessionYear: true
+  }
+}>
 
 export type StudentAdmin = {
   id: number
@@ -44,17 +47,18 @@ export default async function AdminStudentsPage({ searchParams }: AdminStudentsP
   const take = 10
   const skip = (page - 1) * take
 
-  // 3) Prisma where clause
-  const where: Record<string, any> = {}
+  // 3) Prisma where clause (strongly typed)
+  const where: Prisma.StudentWhereInput = {}
   if (genderParam === 'MALE' || genderParam === 'FEMALE') {
+    // gender here matches your DB enum value
     where.gender = genderParam
   }
   if (/^\d{4}$/.test(yearParam)) {
     where.sessionYear = yearParam
   }
 
-  // 4) Fetch
-  const [rawRows, total] = await prisma.$transaction([
+  // 4) Fetch (typed transaction)
+  const [rawRows, total] = await prisma.$transaction<[RawStudent[], number]>([
     prisma.student.findMany({
       where,
       orderBy: { updatedAt: 'desc' },
@@ -70,7 +74,7 @@ export default async function AdminStudentsPage({ searchParams }: AdminStudentsP
       },
     }),
     prisma.student.count({ where }),
-  ]) as [RawStudent[], number]
+  ])
 
   const totalPages = Math.ceil(total / take)
 
