@@ -4,21 +4,18 @@ import { ReactNode } from 'react'
 import clsx from 'clsx'
 
 /**
- * Column<T, K> — `K` is the specific key of T this column points to.
- * cell receives the correctly typed value: T[K]
+ * Simpler Column type: accessor is `keyof T`.
+ * cell receives the value as `T[keyof T]` and the whole row `T`.
  */
-export type Column<
-  T extends Record<string, unknown>,
-  K extends keyof T = keyof T
-> = {
+export type Column<T extends Record<string, unknown>> = {
   header: string
-  accessor: K
-  cell?: (value: T[K], row: T) => ReactNode
+  accessor: keyof T
+  cell?: (value: T[keyof T], row: T) => ReactNode
 }
 
 interface TableProps<T extends Record<string, unknown>> {
   data: T[]
-  columns: Column<T>[]             // columns can use any accessor key of T
+  columns: Column<T>[]             // columns use any accessor of T
   getRowKey?: (row: T, index: number) => string | number
   className?: string
 }
@@ -58,10 +55,10 @@ export default function Table<T extends Record<string, unknown>>({
               return (
                 <tr key={rowKey} className={i % 2 === 0 ? 'bg-blue-50' : 'bg-gray-50'}>
                   {columns.map((col) => {
-                    const value = row[col.accessor] // TS types this as T[keyof T]
+                    const value = row[col.accessor] as T[keyof T]
                     return (
                       <td key={String(col.accessor)} className="px-4 py-2 text-sm">
-                        {col.cell ? col.cell(value as any, row) : String(value ?? '')}
+                        {col.cell ? col.cell(value, row) : String(value ?? '')}
                       </td>
                     )
                   })}
