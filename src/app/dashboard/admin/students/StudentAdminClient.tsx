@@ -1,4 +1,3 @@
-// src/app/dashboard/admin/students/StudentsAdminClient.tsx
 'use client'
 
 import React, { useState, useTransition } from 'react'
@@ -26,7 +25,7 @@ interface Props {
   currentYear: string
 }
 
-export default function StudentsAdminClient({
+export default function StudentAdminClient({
   students,
   page,
   totalPages,
