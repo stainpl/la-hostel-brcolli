@@ -1,151 +1,237 @@
 'use client'
 
-import useSWR from 'swr'
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Cell, LabelList
-} from 'recharts'
-import { motion } from 'framer-motion'
+import { useCallback, useMemo, useState, useRef, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import Spinner from '@/components/ui/Spinner'
+import { toast } from 'react-hot-toast'
+import axios from 'axios'
 
-type Stats = { gender: string; total: number; paid: number }
-
-const COLORS = {
-  paid: ['#059669', '#15803d', '#10b981'],
-  unpaid: '#9ca3af'
+declare global {
+  interface Window {
+    PaystackPop?: {
+      setup: (options: PaystackOptions) => { openIframe: () => void }
+    }
+  }
 }
 
-const fetcher = (url: string) =>
-  fetch(url).then(res => {
-    if (!res.ok) throw new Error(`Failed to fetch ${url}`)
-    return res.json()
+interface PaystackOptions {
+  key: string
+  email: string
+  amount: number
+  ref: string
+  onClose: () => void
+  callback: (response: { reference: string }) => void
+}
+
+interface InitResponse {
+  reference: string
+  email: string
+}
+
+interface VerifyResponse {
+  success: boolean
+  message?: string
+}
+
+const PAYSTACK_SCRIPT_SRC = 'https://js.paystack.co/v1/inline.js'
+
+/** Dynamically load Paystack script and resolve when available */
+function loadPaystackScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') return reject(new Error('No window'))
+    if (window.PaystackPop) return resolve()
+
+    // avoid injecting the script multiple times
+    const existing = document.querySelector(`script[src="${PAYSTACK_SCRIPT_SRC}"]`)
+    if (existing) {
+      existing.addEventListener('load', () => (window.PaystackPop ? resolve() : reject(new Error('Paystack failed to load'))))
+      existing.addEventListener('error', () => reject(new Error('Failed to load Paystack script')))
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = PAYSTACK_SCRIPT_SRC
+    script.async = true
+    script.onload = () => (window.PaystackPop ? resolve() : reject(new Error('Paystack not available after load')))
+    script.onerror = () => reject(new Error('Failed to load Paystack script'))
+    document.body.appendChild(script)
   })
-
-const CustomLegend = () => (
-  <div className="flex flex-wrap justify-center gap-4 mb-8">
-    {[
-      { label: 'Paid Sessions', color: 'bg-green-500', glow: 'shadow-[0_0_8px_rgba(16,185,129,0.6)]' },
-      { label: 'Unpaid Sessions', color: 'bg-gray-400', glow: '' }
-    ].map(({ label, color, glow }) => (
-      <div
-        key={label}
-        className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border border-gray-200 bg-gradient-to-br from-gray-50 to-white ${glow}`}
-      >
-        <span className={`w-4 h-4 rounded-full ${color}`}></span>
-        <span className="text-sm font-medium text-gray-700">{label}</span>
-      </div>
-    ))}
-  </div>
-)
-
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null
-  const { total, paid, unpaid } = payload[0].payload
-  const paidPct = ((paid / total) * 100).toFixed(0)
-  const unpaidPct = ((unpaid / total) * 100).toFixed(0)
-
-  return (
-    <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
-      <p className="text-sm font-semibold text-gray-800 mb-2">{label}</p>
-      <div className="space-y-1 text-sm">
-        <p className="text-green-600">
-          Paid: <span className="font-medium">{paid.toLocaleString()} ({paidPct}%)</span>
-        </p>
-        <p className="text-gray-500">
-          Unpaid: <span className="font-medium">{unpaid.toLocaleString()} ({unpaidPct}%)</span>
-        </p>
-        <p className="text-blue-600">
-          Total: <span className="font-medium">{total.toLocaleString()}</span>
-        </p>
-      </div>
-    </div>
-  )
 }
 
-const calculateBarSize = (max: number, min: number) => {
-  const ratio = max / (min || 1)
-  if (ratio > 100) return 20
-  if (ratio > 30) return 25
-  if (ratio > 10) return 30
-  return 40
-}
+export default function PaymentClient({ studentId }: { studentId: string }) {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
 
-export default function SessionChart() {
-  const { data, error } = useSWR<Stats[]>('/api/admin/session-stats', fetcher)
+  // script load state
+  const [scriptLoading, setScriptLoading] = useState(false)
+  const [scriptLoaded, setScriptLoaded] = useState<boolean>(() => typeof window !== 'undefined' && Boolean(window.PaystackPop))
 
-  if (error) return <p className="text-red-600">Error loading stats</p>
-  if (!data) return <p className="text-gray-500">Loading sessions...</p>
+  // keep a mounted ref so async callbacks don't update state after unmount
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
-  const totals = data.map(d => d.total)
-  const maxTotal = Math.max(...totals)
-  const minTotal = Math.min(...totals)
-  const barSize = calculateBarSize(maxTotal, minTotal)
+  const amountParam = searchParams?.get('amount') ?? ''
+  const roomIdParam = searchParams?.get('roomId') ?? ''
 
-  const chartData = data.map(item => ({
-    ...item,
-    unpaid: item.total - item.paid,
-    paidPct: item.paid > 0 && item.paid / item.total > 0.05
-      ? `${Math.round((item.paid / item.total) * 100)}%`
-      : ''
-  }))
+  // parse once and memoize
+  const { amount, roomId, invalidReason } = useMemo(() => {
+    const a = Number(amountParam)
+    const r = Number(roomIdParam)
+    if (!amountParam || !roomIdParam) {
+      return { amount: NaN, roomId: NaN, invalidReason: 'Missing amount or roomId' }
+    }
+    if (Number.isNaN(a) || Number.isNaN(r)) {
+      return { amount: NaN, roomId: NaN, invalidReason: 'Invalid amount or roomId' }
+    }
+    if (a <= 0) {
+      return { amount: a, roomId: r, invalidReason: 'Amount must be greater than 0' }
+    }
+    return { amount: a, roomId: r, invalidReason: null as string | null }
+  }, [amountParam, roomIdParam])
+
+  if (invalidReason) {
+    return <p className="text-red-500">Missing or invalid roomId or amount: {invalidReason}</p>
+  }
+
+  // Try to pre-load the script once on mount (non-blocking)
+  useEffect(() => {
+    if (scriptLoaded || scriptLoading) return
+    setScriptLoading(true)
+    loadPaystackScript()
+      .then(() => {
+        if (!mountedRef.current) return
+        setScriptLoaded(true)
+      })
+      .catch((err) => {
+        console.warn('Paystack script preload failed:', err)
+      })
+      .finally(() => {
+        if (!mountedRef.current) return
+        setScriptLoading(false)
+      })
+  }, [scriptLoaded, scriptLoading])
+
+  const handlePay = useCallback(async () => {
+    if (loading) return // prevent double clicks
+    setLoading(true)
+
+    try {
+      const paystackKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY
+      if (!paystackKey) {
+        toast.error('Payment key missing')
+        return
+      }
+
+      // ensure Paystack script is available — attempt to load if not
+      if (!window.PaystackPop) {
+        try {
+          setScriptLoading(true)
+          await loadPaystackScript()
+          if (!mountedRef.current) return
+          setScriptLoaded(true)
+        } catch (err) {
+          console.error('Failed to load Paystack script', err)
+          toast.error('Payment service failed to load. Try again later.')
+          return
+        } finally {
+          if (mountedRef.current) setScriptLoading(false)
+        }
+      }
+
+      if (!window.PaystackPop) {
+        toast.error('Payment service not available')
+        return
+      }
+
+      // Step 1: Initialize transaction on server
+      const { data } = await axios.post<InitResponse>('/api/paystack/init', {
+        roomId,
+        studentId: Number(studentId),
+      })
+
+      if (!data || !data.reference || !data.email) {
+        throw new Error('Invalid init response from server')
+      }
+
+      // Step 2: Launch Paystack widget
+      const handler = window.PaystackPop.setup({
+        key: paystackKey,
+        email: data.email,
+        amount: Math.round(amount * 100), // Paystack expects kobo (integer)
+        ref: data.reference,
+        onClose: () => {
+          // only update if still mounted
+          if (!mountedRef.current) return
+          toast('Payment popup closed.')
+          setLoading(false)
+          router.push('/dashboard/student')
+        },
+        callback: async (response) => {
+          // verify with server
+          try {
+            const res = await fetch(`/api/paystack/verify?reference=${encodeURIComponent(response.reference)}`)
+            const result = (await res.json()) as VerifyResponse
+
+            if (res.ok && result.success) {
+              toast.success('Payment confirmed!')
+            } else {
+              toast.error(result.message || 'Payment verification failed')
+            }
+          } catch (err) {
+            console.error('Verify error', err)
+            toast.error('Could not verify payment')
+          } finally {
+            if (!mountedRef.current) return
+            setLoading(false)
+            router.push('/dashboard/student')
+          }
+        },
+      } as PaystackOptions)
+
+      // open the iframe (guarding if handler isn't available)
+      if (handler?.openIframe) {
+        handler.openIframe()
+      } else {
+        throw new Error('Payment handler not available')
+      }
+    } catch (err: unknown) {
+      const message =
+        axios.isAxiosError(err)
+          ? (err.response?.data?.message as string) ?? err.message
+          : err instanceof Error
+          ? err.message
+          : String(err)
+      toast.error(message || 'Payment initialization failed')
+      console.error('Init error:', err)
+    } finally {
+      // ensure we only update state if still mounted
+      if (mountedRef.current) setLoading(false)
+    }
+  }, [amount, roomId, studentId, loading, router])
+
+  const buttonLabel = scriptLoading
+    ? 'Loading payment…'
+    : loading
+    ? 'Processing…'
+    : `Pay ₦${amount.toLocaleString()} Now`
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="bg-white p-6 rounded-2xl shadow-lg"
+    <button
+      onClick={handlePay}
+      disabled={loading || scriptLoading}
+      className="btn-primary w-full flex items-center justify-center"
     >
-      <h2 className="text-2xl font-semibold text-center text-gray-800 mb-4">
-        Session Statistics
-      </h2>
-
-      <CustomLegend />
-
-      <div className="w-full h-[400px]">
-        <ResponsiveContainer>
-          <BarChart
-            data={chartData}
-            layout="vertical"
-            barCategoryGap="15%"
-            barSize={barSize}
-            margin={{ top: 20, right: 30, left: 80, bottom: 20 }}
-          >
-            <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#eef2f7" />
-            <XAxis
-              type="number"
-              domain={[0, maxTotal * 1.1]}
-              tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#6b7280', fontSize: 12 }}
-            />
-            <YAxis
-              dataKey="gender"
-              type="category"
-              width={100}
-              tick={{ fill: '#374151', fontSize: 14 }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-
-            {/* Paid Sessions */}
-            <Bar dataKey="paid" stackId="a" radius={[6, 0, 0, 6]}>
-              {chartData.map((_, i) => (
-                <Cell key={`paid-${i}`} fill={COLORS.paid[i % COLORS.paid.length]} />
-              ))}
-              <LabelList dataKey="paidPct" position="right" style={{ fontSize: 12, fill: '#374151' }} />
-            </Bar>
-
-            {/* Unpaid Sessions */}
-            <Bar dataKey="unpaid" stackId="a" fill={COLORS.unpaid} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {maxTotal > 100 && (
-        <p className="mt-4 text-center text-sm text-gray-500">
-          Showing range from {minTotal.toLocaleString()} to {maxTotal.toLocaleString()}
-        </p>
+      {loading || scriptLoading ? (
+        <Spinner size={20} colorClass="text-white" />
+      ) : (
+        buttonLabel
       )}
-    </motion.div>
+    </button>
   )
 }
