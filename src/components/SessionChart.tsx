@@ -35,14 +35,12 @@ interface VerifyResponse {
 
 const PAYSTACK_SCRIPT_SRC = 'https://js.paystack.co/v1/inline.js'
 
-/** Dynamically load Paystack script and resolve when available */
 function loadPaystackScript(): Promise<void> {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined') return reject(new Error('No window'))
     if (window.PaystackPop) return resolve()
 
-    // avoid injecting the script multiple times
-    const existing = document.querySelector(`script[src="${PAYSTACK_SCRIPT_SRC}"]`)
+    const existing = document.querySelector(`script[src="${PAYSTACK_SCRIPT_SRC}"]`) as HTMLScriptElement | null
     if (existing) {
       existing.addEventListener('load', () => (window.PaystackPop ? resolve() : reject(new Error('Paystack failed to load'))))
       existing.addEventListener('error', () => reject(new Error('Failed to load Paystack script')))
@@ -61,13 +59,15 @@ function loadPaystackScript(): Promise<void> {
 export default function PaymentClient({ studentId }: { studentId: string }) {
   const searchParams = useSearchParams()
   const router = useRouter()
+
+  // payment UI state
   const [loading, setLoading] = useState(false)
 
   // script load state
   const [scriptLoading, setScriptLoading] = useState(false)
   const [scriptLoaded, setScriptLoaded] = useState<boolean>(() => typeof window !== 'undefined' && Boolean(window.PaystackPop))
 
-  // keep a mounted ref so async callbacks don't update state after unmount
+  // mountedRef to avoid state updates after unmount
   const mountedRef = useRef(true)
   useEffect(() => {
     mountedRef.current = true
@@ -79,7 +79,7 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
   const amountParam = searchParams?.get('amount') ?? ''
   const roomIdParam = searchParams?.get('roomId') ?? ''
 
-  // parse once and memoize
+  // parse params
   const { amount, roomId, invalidReason } = useMemo(() => {
     const a = Number(amountParam)
     const r = Number(roomIdParam)
@@ -95,11 +95,7 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
     return { amount: a, roomId: r, invalidReason: null as string | null }
   }, [amountParam, roomIdParam])
 
-  if (invalidReason) {
-    return <p className="text-red-500">Missing or invalid roomId or amount: {invalidReason}</p>
-  }
-
-  // Try to pre-load the script once on mount (non-blocking)
+  // Preload script on mount (hook is declared BEFORE any conditional return)
   useEffect(() => {
     if (scriptLoaded || scriptLoading) return
     setScriptLoading(true)
@@ -117,9 +113,18 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
       })
   }, [scriptLoaded, scriptLoading])
 
+  // handlePay declared BEFORE conditional return — no hook order issues
   const handlePay = useCallback(async () => {
-    if (loading) return // prevent double clicks
-    setLoading(true)
+    // use functional setLoading so we don't have to include `loading` in deps
+    let shouldProceed = true
+    setLoading(prev => {
+      if (prev) {
+        shouldProceed = false
+        return prev
+      }
+      return true
+    })
+    if (!shouldProceed) return
 
     try {
       const paystackKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY
@@ -128,7 +133,7 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
         return
       }
 
-      // ensure Paystack script is available — attempt to load if not
+      // ensure Paystack script is available — attempt to load if necessary
       if (!window.PaystackPop) {
         try {
           setScriptLoading(true)
@@ -149,31 +154,27 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
         return
       }
 
-      // Step 1: Initialize transaction on server
       const { data } = await axios.post<InitResponse>('/api/paystack/init', {
         roomId,
         studentId: Number(studentId),
       })
 
-      if (!data || !data.reference || !data.email) {
+      if (!data?.reference || !data?.email) {
         throw new Error('Invalid init response from server')
       }
 
-      // Step 2: Launch Paystack widget
       const handler = window.PaystackPop.setup({
         key: paystackKey,
         email: data.email,
-        amount: Math.round(amount * 100), // Paystack expects kobo (integer)
+        amount: Math.round(amount * 100),
         ref: data.reference,
         onClose: () => {
-          // only update if still mounted
           if (!mountedRef.current) return
           toast('Payment popup closed.')
           setLoading(false)
           router.push('/dashboard/student')
         },
         callback: async (response) => {
-          // verify with server
           try {
             const res = await fetch(`/api/paystack/verify?reference=${encodeURIComponent(response.reference)}`)
             const result = (await res.json()) as VerifyResponse
@@ -194,7 +195,6 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
         },
       } as PaystackOptions)
 
-      // open the iframe (guarding if handler isn't available)
       if (handler?.openIframe) {
         handler.openIframe()
       } else {
@@ -210,10 +210,14 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
       toast.error(message || 'Payment initialization failed')
       console.error('Init error:', err)
     } finally {
-      // ensure we only update state if still mounted
       if (mountedRef.current) setLoading(false)
     }
-  }, [amount, roomId, studentId, loading, router])
+  }, [amount, roomId, studentId, router])
+
+  // Now it's safe to return early for invalid params — all hooks ran already
+  if (invalidReason) {
+    return <p className="text-red-500">Missing or invalid roomId or amount: {invalidReason}</p>
+  }
 
   const buttonLabel = scriptLoading
     ? 'Loading payment…'
@@ -227,11 +231,7 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
       disabled={loading || scriptLoading}
       className="btn-primary w-full flex items-center justify-center"
     >
-      {loading || scriptLoading ? (
-        <Spinner size={20} colorClass="text-white" />
-      ) : (
-        buttonLabel
-      )}
+      {loading || scriptLoading ? <Spinner size={20} colorClass="text-white" /> : buttonLabel}
     </button>
   )
 }
