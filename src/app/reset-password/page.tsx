@@ -10,16 +10,30 @@ interface ResetPasswordForm {
   confirmPassword: string
 }
 
+
+interface ValidateResetResponse {
+  valid: boolean
+}
+
+
+interface ApiErrorResponse {
+  error?: string
+}
+
 export default function ResetPasswordPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const token = searchParams?.get('token') || ''
+  const token = searchParams?.get('token') ?? ''
 
   const [form, setForm] = useState<ResetPasswordForm>({
     newPassword: '',
     confirmPassword: '',
   })
-  const [errors, setErrors] = useState<Partial<Record<keyof ResetPasswordForm, string>>>({})
+
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof ResetPasswordForm, string>>
+  >({})
+
   const [loading, setLoading] = useState(false)
   const [validating, setValidating] = useState(true)
   const [validToken, setValidToken] = useState(false)
@@ -31,11 +45,28 @@ export default function ResetPasswordPage() {
       setValidToken(false)
       return
     }
-    fetch(`/api/auth/validate-reset?token=${encodeURIComponent(token)}`)
-      .then(res => res.json())
-      .then(({ valid }) => setValidToken(valid))
-      .catch(() => setValidToken(false))
-      .finally(() => setValidating(false))
+
+    const ac = new AbortController()
+    const validate = async () => {
+      setValidating(true)
+      try {
+        const res = await fetch(
+          `/api/auth/validate-reset?token=${encodeURIComponent(token)}`,
+          { signal: ac.signal }
+        )
+        // if server returns non-json, fallback to invalid
+        const body = (await res.json()) as ValidateResetResponse | undefined
+        setValidToken(Boolean(body?.valid))
+      } catch (err) {
+        if ((err as { name?: string })?.name === 'AbortError') return
+        setValidToken(false)
+      } finally {
+        setValidating(false)
+      }
+    }
+
+    validate()
+    return () => ac.abort()
   }, [token])
 
   if (validating) {
@@ -85,14 +116,24 @@ export default function ResetPasswordPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, newPassword: form.newPassword }),
       })
+
       if (!res.ok) {
-        const { error } = await res.json()
-        throw new Error(error || 'Reset failed')
+        // try to parse structured error body, otherwise throw generic
+        let body: ApiErrorResponse | undefined
+        try {
+          body = (await res.json()) as ApiErrorResponse
+        } catch {
+          // ignore JSON parse errors
+        }
+        throw new Error(body?.error ?? 'Reset failed')
       }
+
       toast.success('Password reset! Redirecting…')
       router.push('/')
-    } catch (err: any) {
-      toast.error(err.message)
+    } catch (err: unknown) {
+      // handle unknown error safely
+      const message = err instanceof Error ? err.message : String(err)
+      toast.error(message || 'Something went wrong')
     } finally {
       setLoading(false)
     }
@@ -110,14 +151,19 @@ export default function ResetPasswordPage() {
 
         {/* New Password */}
         <div>
-          <label htmlFor="new-password" className="block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="new-password"
+            className="block text-sm font-medium text-gray-700"
+          >
             New Password
           </label>
           <input
             type="password"
             id="new-password"
             value={form.newPassword}
-            onChange={e => setForm(prev => ({ ...prev, newPassword: e.target.value }))}
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, newPassword: e.target.value }))
+            }
             required
             minLength={6}
             disabled={loading}
@@ -133,14 +179,19 @@ export default function ResetPasswordPage() {
 
         {/* Confirm Password */}
         <div>
-          <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="confirm-password"
+            className="block text-sm font-medium text-gray-700"
+          >
             Confirm Password
           </label>
           <input
             type="password"
             id="confirm-password"
             value={form.confirmPassword}
-            onChange={e => setForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, confirmPassword: e.target.value }))
+            }
             required
             minLength={6}
             disabled={loading}
