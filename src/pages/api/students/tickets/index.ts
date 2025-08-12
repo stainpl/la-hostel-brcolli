@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { getServerSession } from 'next-auth/next'
-import { IncomingForm } from 'formidable'
+import { IncomingForm, Fields, Files } from 'formidable'
 import { authOptions } from '../../auth/[...nextauth]'
 import { prisma } from '@/lib/prisma'
 import { withLogging } from '@/lib/withLogging'
@@ -8,7 +8,7 @@ import { withLogging } from '@/lib/withLogging'
 export const config = { api: { bodyParser: false } }
 
 // Helper to parse form with formidable
-function parseForm(req: NextApiRequest): Promise<{ fields: any; files: any }> {
+function parseForm(req: NextApiRequest): Promise<{ fields: Fields; files: Files }> {
   return new Promise((resolve, reject) => {
     const form = new IncomingForm({
       uploadDir: './public/uploads',
@@ -53,8 +53,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const subject = String(subjectRaw || '').trim()
     const message = String(messageRaw || '').trim()
 
-    console.log('🔍 Subject:', subject, 'Length:', subject.length)
-
     if (subject.length < 3) {
       return res.status(400).json({ message: 'Subject must be at least 3 characters.' })
     }
@@ -82,9 +80,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })
 
     return res.status(201).json(ticket)
-  } catch (error: any) {
-    console.error('Ticket creation error:', error)
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error('Ticket creation error:', error.message)
+    } else {
+      console.error('Ticket creation error:', error)
+    }
     return res.status(500).json({ message: 'Error opening ticket.' })
   }
 }
+
 export default withLogging(handler, 'students.ticket.create')
