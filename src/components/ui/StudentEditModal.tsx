@@ -33,6 +33,8 @@ interface Props {
 
 const MAX_PHOTO_SIZE = 3 * 1024 * 1024 // 3 MB
 
+type ServerErrorShape = { message?: string } // used to safely read server messages
+
 export default function StudentEditModal({ student, onClose, onSave }: Props) {
   const [form, setForm] = useState<FormState>({
     fullName: student.fullName ?? '',
@@ -53,7 +55,6 @@ export default function StudentEditModal({ student, onClose, onSave }: Props) {
   const [previewUrl, setPreviewUrl] = useState<string>(form.profilePhoto ?? '')
   const [loading, setLoading] = useState(false)
 
-  // Create preview when a new file is selected; clean up previous object URL
   useEffect(() => {
     if (!photoFile) {
       setPreviewUrl(form.profilePhoto ?? '')
@@ -66,7 +67,6 @@ export default function StudentEditModal({ student, onClose, onSave }: Props) {
     }
   }, [photoFile, form.profilePhoto])
 
-  // typed fields so accessing form[name] is safe
   const fields: Array<{
     label: string
     name: keyof FormState
@@ -87,7 +87,6 @@ export default function StudentEditModal({ student, onClose, onSave }: Props) {
     const name = e.target.name as keyof FormState
     const rawValue = e.target.value
 
-    // sessionYear must be a number, everything else string
     const value: FormState[typeof name] =
       name === 'sessionYear' ? (Number(rawValue) as FormState['sessionYear']) : (rawValue as FormState[typeof name])
 
@@ -117,10 +116,8 @@ export default function StudentEditModal({ student, onClose, onSave }: Props) {
     try {
       const data = new FormData()
 
-      // Append only defined keys from form
-      (Object.keys(form) as Array<keyof FormState>).forEach((key) => {
+      ;(Object.keys(form) as Array<keyof FormState>).forEach((key) => {
         const value = form[key]
-        // FormData only accepts strings / blobs — convert numbers to strings
         if (value !== undefined && value !== null) {
           data.append(key, typeof value === 'number' ? String(value) : String(value))
         }
@@ -136,14 +133,17 @@ export default function StudentEditModal({ student, onClose, onSave }: Props) {
 
       toast.success('Student updated!')
       onSave(res.data)
-      // reset local file state and close
       setPhotoFile(null)
       onClose()
     } catch (err: unknown) {
+      // Typesafe handling without `any`
       if (axios.isAxiosError(err)) {
+        const serverData = err.response?.data
         const serverMsg =
-          (err.response?.data && (err.response.data as any).message) ?? err.message
-        toast.error(serverMsg || 'Update failed')
+          serverData && typeof serverData === 'object' && 'message' in serverData
+            ? (serverData as ServerErrorShape).message
+            : undefined
+        toast.error(serverMsg ?? err.message ?? 'Update failed')
       } else if (err instanceof Error) {
         toast.error(err.message)
       } else {
