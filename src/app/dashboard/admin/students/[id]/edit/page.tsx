@@ -5,16 +5,18 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import EditStudentForm from '@/components/forms/EditStudentForm'
 
-export default async function EditStudentPage({ params }: any) {
+export default async function EditStudentPage({
+  params,
+}: {
+  params: { id: string }
+}) {
   const session = await getServerSession(authOptions)
 
   if (session?.user?.role !== 'admin') {
     redirect('/auth/login')
   }
 
-  // Normalize params.id in case it's an array
-  const idValue = Array.isArray(params.id) ? params.id[0] : params.id
-  const studentId = Number(idValue)
+  const studentId = Number(params.id)
 
   if (Number.isNaN(studentId)) {
     redirect('/dashboard/admin/students')
@@ -30,12 +32,10 @@ export default async function EditStudentPage({ params }: any) {
 
   return (
     <div>
-      {/* Example heading */}
-      <h1 className="text-2xl font-bold mb-4">Edit Student</h1>
-
+      <h1>Edit Student</h1>
       <EditStudentForm
-        initialData={{
-          ...student,
+        initialData={{ 
+          ...student, 
           sessionYear: Number(student.sessionYear),
         }}
       />
