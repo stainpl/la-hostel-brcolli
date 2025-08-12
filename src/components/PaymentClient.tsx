@@ -1,10 +1,10 @@
 'use client'
 
+import { useCallback, useMemo, useState, useRef, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useState } from 'react'
 import Spinner from '@/components/ui/Spinner'
-import toast from 'react-hot-toast'
-import axios, { AxiosError } from 'axios'
+import { toast } from 'react-hot-toast'
+import axios from 'axios'
 
 declare global {
   interface Window {
@@ -38,83 +38,118 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
-  const amountParam = searchParams?.get('amount')
-  const roomIdParam = searchParams?.get('roomId')
+  // keep a mounted ref so async callbacks don't update state after unmount
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
-  // Validate params early
-  const amount = Number(amountParam)
-  const roomId = Number(roomIdParam)
-  if (!amountParam || !roomIdParam || isNaN(amount) || isNaN(roomId) || amount <= 0) {
-    return <p className="text-red-500">Missing or invalid roomId or amount.</p>
+  const amountParam = searchParams?.get('amount') ?? ''
+  const roomIdParam = searchParams?.get('roomId') ?? ''
+
+  // parse once and memoize
+  const { amount, roomId, invalidReason } = useMemo(() => {
+    const a = Number(amountParam)
+    const r = Number(roomIdParam)
+    if (!amountParam || !roomIdParam) {
+      return { amount: NaN, roomId: NaN, invalidReason: 'Missing amount or roomId' }
+    }
+    if (Number.isNaN(a) || Number.isNaN(r)) {
+      return { amount: NaN, roomId: NaN, invalidReason: 'Invalid amount or roomId' }
+    }
+    if (a <= 0) {
+      return { amount: a, roomId: r, invalidReason: 'Amount must be greater than 0' }
+    }
+    return { amount: a, roomId: r, invalidReason: null as string | null }
+  }, [amountParam, roomIdParam])
+
+  if (invalidReason) {
+    return <p className="text-red-500">Missing or invalid roomId or amount: {invalidReason}</p>
   }
 
-  const handlePay = async () => {
-    if (loading) return // Prevent double click
-
-    const paystackKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY
-    if (!paystackKey) {
-      toast.error('Payment key missing')
-      return
-    }
-    if (!window.PaystackPop) {
-      toast.error('Payment service not loaded')
-      return
-    }
-
+  const handlePay = useCallback(async () => {
+    if (loading) return // prevent double clicks
     setLoading(true)
+
     try {
-      // Step 1: Initialize transaction
+      const paystackKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY
+      if (!paystackKey) {
+        toast.error('Payment key missing')
+        return
+      }
+      if (!window.PaystackPop) {
+        toast.error('Payment service not loaded')
+        return
+      }
+
+      // Step 1: Initialize transaction on server
       const { data } = await axios.post<InitResponse>('/api/paystack/init', {
         roomId,
         studentId: Number(studentId),
       })
 
-      if (!data.reference || !data.email) {
-        throw new Error('Invalid init response')
+      if (!data || !data.reference || !data.email) {
+        throw new Error('Invalid init response from server')
       }
 
       // Step 2: Launch Paystack widget
       const handler = window.PaystackPop.setup({
         key: paystackKey,
         email: data.email,
-        amount: amount * 100, // Paystack expects kobo
+        amount: Math.round(amount * 100), // Paystack expects kobo (integer)
         ref: data.reference,
         onClose: () => {
+          // only update if still mounted
+          if (!mountedRef.current) return
           toast('Payment popup closed.')
           setLoading(false)
           router.push('/dashboard/student')
         },
         callback: async (response) => {
+          // verify with server
           try {
-            const verifyResp = await fetch(`/api/paystack/verify?reference=${response.reference}`)
-            const result: VerifyResponse = await verifyResp.json()
+            const res = await fetch(`/api/paystack/verify?reference=${encodeURIComponent(response.reference)}`)
+            const result = (await res.json()) as VerifyResponse
 
-            if (verifyResp.ok && result.success) {
+            if (res.ok && result.success) {
               toast.success('Payment confirmed!')
             } else {
               toast.error(result.message || 'Payment verification failed')
             }
-          } catch (e) {
-            console.error('Verify error', e)
+          } catch (err) {
+            console.error('Verify error', err)
             toast.error('Could not verify payment')
           } finally {
+            if (!mountedRef.current) return
             setLoading(false)
             router.push('/dashboard/student')
           }
         },
-      })
+      } as PaystackOptions)
 
-      handler.openIframe()
-    } catch (err) {
+      // open the iframe (guarding if handler isn't available)
+      if (handler?.openIframe) {
+        handler.openIframe()
+      } else {
+        throw new Error('Payment handler not available')
+      }
+    } catch (err: unknown) {
       const message =
         axios.isAxiosError(err)
-          ? err.response?.data?.message || err.message
-          : (err as Error).message
+          ? (err.response?.data?.message as string) ?? err.message
+          : err instanceof Error
+          ? err.message
+          : String(err)
       toast.error(message || 'Payment initialization failed')
       console.error('Init error:', err)
-      setLoading(false)
+    } finally {
+      // ensure we only update state if still mounted
+      if (mountedRef.current) setLoading(false)
     }
-  }
+  }, [amount, roomId, studentId, loading, router])
 
   return (
     <button
