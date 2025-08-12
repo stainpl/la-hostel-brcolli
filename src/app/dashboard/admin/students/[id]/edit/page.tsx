@@ -1,4 +1,3 @@
-// src/app/dashboard/admin/students/[id]/edit/page.tsx
 import React from 'react'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/pages/api/auth/[...nextauth]'
@@ -6,11 +5,7 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import EditStudentForm from '@/components/forms/EditStudentForm'
 
-export default async function EditStudentPage({
-  params,
-}: {
-  params: { id: string | string[] }
-}) {
+export default async function EditStudentPage({ params }: any) {
   const session = await getServerSession(authOptions)
 
   if (session?.user?.role !== 'admin') {
