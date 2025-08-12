@@ -38,7 +38,7 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
-  // keep a mounted ref so async callbacks don't update state after unmount
+  // track mount status to prevent state updates after unmount
   const mountedRef = useRef(true)
   useEffect(() => {
     mountedRef.current = true
@@ -50,7 +50,6 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
   const amountParam = searchParams?.get('amount') ?? ''
   const roomIdParam = searchParams?.get('roomId') ?? ''
 
-  // parse once and memoize
   const { amount, roomId, invalidReason } = useMemo(() => {
     const a = Number(amountParam)
     const r = Number(roomIdParam)
@@ -66,13 +65,11 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
     return { amount: a, roomId: r, invalidReason: null as string | null }
   }, [amountParam, roomIdParam])
 
-  if (invalidReason) {
-    return <p className="text-red-500">Missing or invalid roomId or amount: {invalidReason}</p>
-  }
-
   const handlePay = useCallback(async () => {
-    if (loading) return // prevent double clicks
-    setLoading(true)
+    setLoading(prev => {
+      if (prev) return prev // ignore if already loading
+      return true
+    })
 
     try {
       const paystackKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY
@@ -85,13 +82,13 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
         return
       }
 
-      // Step 1: Initialize transaction on server
+      // Step 1: Initialize transaction
       const { data } = await axios.post<InitResponse>('/api/paystack/init', {
         roomId,
         studentId: Number(studentId),
       })
 
-      if (!data || !data.reference || !data.email) {
+      if (!data?.reference || !data?.email) {
         throw new Error('Invalid init response from server')
       }
 
@@ -99,17 +96,15 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
       const handler = window.PaystackPop.setup({
         key: paystackKey,
         email: data.email,
-        amount: Math.round(amount * 100), // Paystack expects kobo (integer)
+        amount: Math.round(amount * 100), // convert to kobo
         ref: data.reference,
         onClose: () => {
-          // only update if still mounted
           if (!mountedRef.current) return
           toast('Payment popup closed.')
           setLoading(false)
           router.push('/dashboard/student')
         },
         callback: async (response) => {
-          // verify with server
           try {
             const res = await fetch(`/api/paystack/verify?reference=${encodeURIComponent(response.reference)}`)
             const result = (await res.json()) as VerifyResponse
@@ -130,7 +125,6 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
         },
       } as PaystackOptions)
 
-      // open the iframe (guarding if handler isn't available)
       if (handler?.openIframe) {
         handler.openIframe()
       } else {
@@ -146,10 +140,14 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
       toast.error(message || 'Payment initialization failed')
       console.error('Init error:', err)
     } finally {
-      // ensure we only update state if still mounted
       if (mountedRef.current) setLoading(false)
     }
-  }, [amount, roomId, studentId, loading, router])
+  }, [amount, roomId, studentId, router])
+
+  // conditional rendering AFTER hooks are declared
+  if (invalidReason) {
+    return <p className="text-red-500">Missing or invalid roomId or amount: {invalidReason}</p>
+  }
 
   return (
     <button
@@ -157,11 +155,7 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
       disabled={loading}
       className="btn-primary w-full flex items-center justify-center"
     >
-      {loading ? (
-        <Spinner size={20} colorClass="text-white" />
-      ) : (
-        `Pay ₦${amount.toLocaleString()} Now`
-      )}
+      {loading ? <Spinner size={20} colorClass="text-white" /> : `Pay ₦${amount.toLocaleString()} Now`}
     </button>
   )
 }
