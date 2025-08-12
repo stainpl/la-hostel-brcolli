@@ -7,8 +7,10 @@ import EditStudentForm from '@/components/forms/EditStudentForm'
 
 export default async function EditStudentPage({
   params,
+  searchParams,
 }: {
-  params: { id: string }
+  params: { id: string };
+  searchParams?: { [key: string]: string | string[] | undefined };
 }) {
   const session = await getServerSession(authOptions)
 
