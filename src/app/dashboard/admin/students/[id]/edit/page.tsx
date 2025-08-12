@@ -1,3 +1,4 @@
+// src/app/dashboard/admin/students/[id]/edit/page.tsx
 import React from 'react'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/pages/api/auth/[...nextauth]'
@@ -7,10 +8,9 @@ import EditStudentForm from '@/components/forms/EditStudentForm'
 
 export default async function EditStudentPage({
   params,
-  searchParams,
 }: {
-  params: { id: string };
-  searchParams?: { [key: string]: string | string[] | undefined };
+  params: { id: string }
+  searchParams?: { [key: string]: string | string[] | undefined }
 }) {
   const session = await getServerSession(authOptions)
 
