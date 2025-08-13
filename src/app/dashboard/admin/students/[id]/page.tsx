@@ -7,15 +7,15 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import EditStudentForm from '@/components/forms/EditStudentForm'
 
-interface Props {
-  params: { id: string }
-}
 
-export default async function EditStudentPage({ params }: Props) {
-  // 1) Auth guard
+export default async function EditStudentPage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.role || session.user.role !== 'admin') {
     redirect('/auth/login')
+  }
+
+  if (!params?.id) {
+    redirect('/dashboard/admin/students')
   }
 
   const studentId = Number(params.id)
@@ -55,9 +55,7 @@ export default async function EditStudentPage({ params }: Props) {
           </Link>
         </header>
 
-        {/* Pass the student as initial values */}
         <EditStudentForm initialData={{ ...student, sessionYear: Number(student.sessionYear) }} />
-
       </main>
     </div>
   )
