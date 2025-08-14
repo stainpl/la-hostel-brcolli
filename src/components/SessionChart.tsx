@@ -22,7 +22,6 @@ const COLORS = {
   paid: ['#059669', '#15803d', '#10b981']   
 }
 
-
 const CustomLegend = () => (
   <div className="flex flex-wrap justify-center gap-4 mb-8">
     {[
@@ -43,15 +42,18 @@ const CustomLegend = () => (
   </div>
 )
 
-// Sleek tooltip with smoother typography
+interface RechartsPayload {
+  payload: Stats
+}
+
 const CustomTooltip = ({
   active,
   payload,
   label,
-}: TooltipProps<number, string> & { payload?: any[] }) => {
+}: TooltipProps<number, string> & { payload?: RechartsPayload[] }) => {
   if (!active || !payload || !payload.length) return null
   // payload[0].payload will have the chart data for this bar
-  const { total, paid } = payload[0].payload as Stats
+  const { total, paid } = payload[0].payload
   const unpaid = total - paid
   const paidPct = ((paid / total) * 100).toFixed(0)
   const unpaidPct = ((unpaid / total) * 100).toFixed(0)
