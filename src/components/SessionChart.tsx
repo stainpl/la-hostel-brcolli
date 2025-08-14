@@ -1,4 +1,3 @@
-
 'use client'
 
 import useSWR from 'swr'
@@ -11,19 +10,19 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
-  LabelList
+  LabelList,
+  TooltipProps
 } from 'recharts'
 import { motion } from 'framer-motion'
 
 type Stats = { gender: string; total: number; paid: number }
 
-// Refined color palette for accessibility and consistency
 const COLORS = {
-  total: ['#2563eb', '#1e40af', '#3b82f6'], // deep blues
-  paid: ['#059669', '#15803d', '#10b981']   // rich greens
+  total: ['#2563eb', '#1e40af', '#3b82f6'], 
+  paid: ['#059669', '#15803d', '#10b981']   
 }
 
-// Polished legend with soft gradient background
+
 const CustomLegend = () => (
   <div className="flex flex-wrap justify-center gap-4 mb-8">
     {[
@@ -45,9 +44,14 @@ const CustomLegend = () => (
 )
 
 // Sleek tooltip with smoother typography
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null
-  const { total, paid } = payload[0].payload
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+}: TooltipProps<number, string>) => {
+  if (!active || !payload || !payload.length) return null
+  // payload[0].payload will have the chart data for this bar
+  const { total, paid } = payload[0].payload as Stats
   const unpaid = total - paid
   const paidPct = ((paid / total) * 100).toFixed(0)
   const unpaidPct = ((unpaid / total) * 100).toFixed(0)
@@ -73,7 +77,7 @@ const calculateBarSize = (max: number, min: number) => {
 }
 
 export default function SessionChart() {
-  const { data, error } = useSWR<Stats[]>('/api/admin/session-stats', (url : string) => fetch(url).then(r => r.json()))
+  const { data, error } = useSWR<Stats[]>('/api/admin/session-stats', (url: string) => fetch(url).then(r => r.json()))
   if (error) return <p className="text-red-600">Error loading stats</p>
   if (!data) return <p className="text-gray-500">Loading sessions...</p>
 
@@ -132,7 +136,7 @@ export default function SessionChart() {
                 <Cell key={i} fill={COLORS.total[i % COLORS.total.length]} />
               ))}
             </Bar>
-            <Bar dataKey="paid" stackId="a" radius={[6, 0, 0, 6]}>  
+            <Bar dataKey="paid" stackId="a" radius={[6, 0, 0, 6]}>
               {chartData.map((_, i) => (
                 <Cell key={i} fill={COLORS.paid[i % COLORS.paid.length]} />
               ))}
@@ -151,4 +155,3 @@ export default function SessionChart() {
     </motion.div>
   )
 }
-
