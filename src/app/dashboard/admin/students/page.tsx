@@ -49,7 +49,6 @@ export default async function AdminStudentsPage({ searchParams }: AdminStudentsP
   // 3) Prisma where clause (strongly typed)
   const where: Prisma.StudentWhereInput = {}
   if (genderParam === 'MALE' || genderParam === 'FEMALE') {
-    // gender here matches your DB enum value
     where.gender = genderParam
   }
   if (/^\d{4}$/.test(yearParam)) {
@@ -57,7 +56,8 @@ export default async function AdminStudentsPage({ searchParams }: AdminStudentsP
   }
 
   // 4) Fetch (typed transaction)
-  const [rawRows, total] = await prisma.$transaction<[RawStudent[], number]>([
+  // FIX: use the array form, not tuple-generic, and destructure result
+  const [rawRows, total] = await prisma.$transaction([
     prisma.student.findMany({
       where,
       orderBy: { updatedAt: 'desc' },
@@ -73,7 +73,7 @@ export default async function AdminStudentsPage({ searchParams }: AdminStudentsP
       },
     }),
     prisma.student.count({ where }),
-  ])
+  ]) as [RawStudent[], number]
 
   const totalPages = Math.ceil(total / take)
 
@@ -84,7 +84,7 @@ export default async function AdminStudentsPage({ searchParams }: AdminStudentsP
     email: s.email,
     room: s.room ? `${s.room.block}-${s.room.number}` : '—',
     gender: s.gender,
-    sessionYear: parseInt(s.sessionYear, 10),
+    sessionYear: parseInt(s.sessionYear as any, 10),
   }))
 
   return (
