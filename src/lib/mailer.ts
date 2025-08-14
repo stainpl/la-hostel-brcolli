@@ -1,6 +1,6 @@
 import nodemailer, { SendMailOptions } from 'nodemailer';
 import { PDFDocument, rgb } from 'pdf-lib';
-import fontkit from '@pdf-lib/fontkit';
+import fontkit from '@pdf-lib/fontkit'; 
 import path from 'path';
 import fs from 'fs';
 
