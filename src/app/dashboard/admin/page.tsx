@@ -304,7 +304,7 @@ export default function AdminDashboard() {
                   isMulti
                   options={genders}
                   value={selectedGenders}
-                  onChange={(v) => setSelectedGenders(v || [])}
+                  onChange={(v) => setSelectedGenders(Array.isArray(v) ? v : [])}
                   placeholder="Filter by gender..."
                   className="react-select-container"
                   classNamePrefix="react-select"
