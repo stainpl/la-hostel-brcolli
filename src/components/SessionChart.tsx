@@ -48,7 +48,7 @@ const CustomTooltip = ({
   active,
   payload,
   label,
-}: TooltipProps<number, string>) => {
+}: TooltipProps<number, string> & { payload?: any[] }) => {
   if (!active || !payload || !payload.length) return null
   // payload[0].payload will have the chart data for this bar
   const { total, paid } = payload[0].payload as Stats
