@@ -42,15 +42,21 @@ const CustomLegend = () => (
   </div>
 )
 
+// Strictly type the payload for recharts tooltip
 interface RechartsPayload {
   payload: Stats
+}
+
+interface CustomTooltipProps extends TooltipProps<number, string> {
+  payload?: RechartsPayload[]
+  label?: string
 }
 
 const CustomTooltip = ({
   active,
   payload,
   label,
-}: TooltipProps<number, string> & { payload?: RechartsPayload[] }) => {
+}: CustomTooltipProps) => {
   if (!active || !payload || !payload.length) return null
   // payload[0].payload will have the chart data for this bar
   const { total, paid } = payload[0].payload
