@@ -11,12 +11,11 @@ type PaystackVerifyBody = {
     status?: string
     reference?: string
     amount?: number
-    // keep other fields optional if you read them later
     [k: string]: unknown
   }
 }
 
-/** small runtime helpers */
+
 const isObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null
 
@@ -70,7 +69,6 @@ export async function GET(req: Request) {
 
     // validate shape & success
     if (!res.ok || !isPaystackSuccess(body)) {
-      // prefer provider message when available
       const providerMessage =
         isObject(body) && typeof body['message'] === 'string' ? (body['message'] as string) : undefined
       return NextResponse.json(
@@ -86,7 +84,6 @@ export async function GET(req: Request) {
       console.warn(
         `[VERIFY PAYSTACK] reference mismatch: requested=${reference} provider=${payData.reference}`
       )
-      // continue but you may want to reject depending on your security model
     }
 
     // 2) Update Payment record
@@ -123,14 +120,12 @@ export async function GET(req: Request) {
           date: payment.createdAt,
         })
       } catch (mailErr) {
-        // email send failed — don't crash the whole request, but log it
         console.error('[VERIFY PAYSTACK] failed to send receipt email', mailErr)
       }
     }
 
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
-    // no `any` — narrow the error safely
     console.error('[VERIFY PAYSTACK ERROR]', err)
     const message = err instanceof Error ? err.message : 'Server error during verification'
     return NextResponse.json({ success: false, message }, { status: 500 })
