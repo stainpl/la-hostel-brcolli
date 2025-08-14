@@ -1,10 +1,8 @@
-// src/pages/api/admin/rooms/[id]/occupants.ts
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
-import { withLogging }                  from '@/lib/withLogging'
+import { withLogging } from '@/lib/withLogging'
 
-
- async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const roomId = Number(req.query.id)
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET'])
