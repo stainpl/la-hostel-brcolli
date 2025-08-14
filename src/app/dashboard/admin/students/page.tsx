@@ -56,7 +56,6 @@ export default async function AdminStudentsPage({ searchParams }: AdminStudentsP
   }
 
   // 4) Fetch (typed transaction)
-  // FIX: use the array form, not tuple-generic, and destructure result
   const [rawRows, total] = await prisma.$transaction([
     prisma.student.findMany({
       where,
@@ -84,7 +83,7 @@ export default async function AdminStudentsPage({ searchParams }: AdminStudentsP
     email: s.email,
     room: s.room ? `${s.room.block}-${s.room.number}` : '—',
     gender: s.gender,
-    sessionYear: parseInt(s.sessionYear as any, 10),
+    sessionYear: typeof s.sessionYear === "string" ? parseInt(s.sessionYear, 10) : s.sessionYear,
   }))
 
   return (
