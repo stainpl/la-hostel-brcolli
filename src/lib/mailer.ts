@@ -1,6 +1,6 @@
 import nodemailer, { SendMailOptions } from 'nodemailer';
 import { PDFDocument, rgb } from 'pdf-lib';
-import fontkit, { Fontkit } from '@pdf-lib/fontkit';
+import fontkit from '@pdf-lib/fontkit';
 import path from 'path';
 import fs from 'fs';
 
@@ -46,7 +46,7 @@ export async function sendPaymentReceipt(opts: {
   try {
     // Create PDF
     const pdfDoc = await PDFDocument.create();
-    pdfDoc.registerFontkit(fontkit as unknown as Fontkit);
+    pdfDoc.registerFontkit(fontkit);
 
     const fontPath = path.join(process.cwd(), 'public', 'fonts', 'static', 'Roboto-Regular.ttf');
     const fontBytes = fs.readFileSync(fontPath);
