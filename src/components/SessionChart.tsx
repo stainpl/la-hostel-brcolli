@@ -113,9 +113,8 @@ export default function PaymentClient({ studentId }: { studentId: string }) {
       })
   }, [scriptLoaded, scriptLoading])
 
-  // handlePay declared BEFORE conditional return — no hook order issues
+
   const handlePay = useCallback(async () => {
-    // use functional setLoading so we don't have to include `loading` in deps
     let shouldProceed = true
     setLoading(prev => {
       if (prev) {
