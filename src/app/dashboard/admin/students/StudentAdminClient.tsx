@@ -56,9 +56,10 @@ export default function StudentAdminClient({
     })
   }
 
+  // UPDATED: Handles possible null value for searchParams
   const goToPage = (p: number) => {
     startTransition(() => {
-      const params = new URLSearchParams(searchParams.toString())
+      const params = new URLSearchParams(searchParams?.toString() || "")
       params.set('page', String(p))
       router.push(`/dashboard/admin/students?${params.toString()}`)
     })
